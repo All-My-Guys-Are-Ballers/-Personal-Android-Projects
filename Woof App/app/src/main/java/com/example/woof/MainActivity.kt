@@ -98,7 +98,7 @@ fun DogItem(dog: Dog, modifier: Modifier = Modifier) {
                     .padding(8.dp)
             ) {
                 DogIcon(dog.imageResourceId)
-                DogInformation(dog.name, dog.age)
+                DogInformation(dog.name, dog.age, Modifier.weight(1f))
                 Spacer(modifier = Modifier.weight(1f))
                 DogItemButton(
                     expanded = expanded,

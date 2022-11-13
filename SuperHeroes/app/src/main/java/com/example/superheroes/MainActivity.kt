@@ -3,7 +3,6 @@ package com.example.superheroes
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -19,7 +18,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.superheroes.data.Hero
 import com.example.superheroes.data.heroes
 import com.example.superheroes.ui.theme.SuperHeroesTheme
@@ -34,22 +32,12 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colors.background
                 ) {
+                    SuperheroApp()
                 }
             }
         }
     }
 }
-@Composable
-fun SuperheroApp(){
-    Scaffold(){
-        LazyColumn(Modifier.background(MaterialTheme.colors.background)) {
-            items(heroes) {
-                SuperheroItem(modifier = Modifier.height(72.dp), hero = it)
-            }
-        }
-    }
-}
-
 
 @Composable
 fun SuperheroItem(
@@ -59,24 +47,54 @@ fun SuperheroItem(
     Card(modifier = modifier
         .padding(16.dp)
         .fillMaxWidth()
-        .clip(RoundedCornerShape(16.dp)),
+        .clip(RoundedCornerShape(16.dp))
+        .height(108.dp),
         elevation = 2.dp,
 
-    ) {
-        Row {
-            SuperheroInformation(modifier = Modifier, hero.nameRes, hero.descriptionRes)
+        ) {
+        Row(
+            Modifier
+                .padding(16.dp)
+                .fillMaxHeight()
+        ) {
+            SuperheroInformation(modifier = Modifier.weight(1f), hero.nameRes, hero.descriptionRes)
             Spacer(modifier = Modifier.width(16.dp))
             Image(
                 painter = painterResource(id = hero.imageRes),
                 contentDescription = stringResource(id = hero.descriptionRes),
-                Modifier.clip(RoundedCornerShape(8.dp))
+                Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .fillMaxHeight(),
+//                contentScale = ContentScale.FillWidth
             )
-
         }
-
     }
-
 }
+
+@Composable
+fun SuperheroApp(){
+    Scaffold(topBar = { TopAppBar() }){
+        LazyColumn(Modifier.background(MaterialTheme.colors.background)) {
+            items(heroes) {
+                SuperheroItem(modifier = Modifier, hero = it)
+            }
+        }
+    }
+}
+
+@Composable
+fun TopAppBar(){
+        Text(
+            text = stringResource(id = R.string.app_name),
+            style = MaterialTheme.typography.h1,
+            modifier = Modifier
+                .height(56.dp)
+                .fillMaxSize()
+                .wrapContentSize()
+
+        )
+}
+
 
 @Composable
 fun SuperheroInformation(
@@ -101,7 +119,7 @@ fun SuperheroInformation(
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
-    SuperHeroesTheme {
+    SuperHeroesTheme (darkTheme = true){
         SuperheroApp()
     }
 }
