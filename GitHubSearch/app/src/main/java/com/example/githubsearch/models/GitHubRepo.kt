@@ -1,5 +1,6 @@
 package com.example.githubsearch.models
 
+import androidx.annotation.Keep
 import com.example.githubsearch.network.ApiInterface
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.serialization.SerialName
@@ -7,9 +8,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType
 import retrofit2.Retrofit
-import java.security.acl.Owner
 
-
+@Keep
 @Serializable
 data class GithubRepo(
     @SerialName( "id")

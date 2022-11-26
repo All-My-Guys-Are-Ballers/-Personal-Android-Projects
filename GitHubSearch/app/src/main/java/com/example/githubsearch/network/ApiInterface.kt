@@ -6,12 +6,16 @@ import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import retrofit2.Response
 import retrofit2.Retrofit
+import retrofit2.converter.moshi.MoshiConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
 
+private const val BASE_URL =
+    "https://api.github.com/search/"
+
 private val retrofit = Retrofit.Builder()
-    .addConverterFactory(Json.asConverterFactory("application/json".toMediaType()))
-//    .baseUrl(BASE_URL)
+    .addConverterFactory(MoshiConverterFactory.create())
+    .baseUrl(BASE_URL)
     .build()
 
 
@@ -21,11 +25,11 @@ interface ApiInterface {
     // Help: https://docs.github.com/en/rest/reference/search#search-repositories
     // ----------------------------------------------------------------
 
-    @GET("https://api.github.com/search/repositories")
+    @GET("repositories")
     suspend fun searchGithubRepo(
         @Query("page") page: Int,
-        @Query("sort") sort: String,
-        @Query("order") order: String,
+        @Query("sort") sort: String = "stars",
+        @Query("order") order: String = "desc",
         @Query("q") query: String,
     ): Response<GithubRepoResponse>
 }

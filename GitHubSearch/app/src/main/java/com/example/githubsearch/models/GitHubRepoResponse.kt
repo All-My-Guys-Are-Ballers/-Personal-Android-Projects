@@ -1,9 +1,10 @@
 package com.example.githubsearch.models
 
+import androidx.annotation.Keep
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-
+@Keep
 @Serializable
 data class GithubRepoResponse(
     @SerialName("total_count")
@@ -12,6 +13,6 @@ data class GithubRepoResponse(
     val incompleteResults: Boolean?,
     @SerialName("items")
     val items: List<GithubRepo>?,
-    @SerialName("message")
-    val message: String?
+//    @SerialName("message")
+//    val message: String?
 )
