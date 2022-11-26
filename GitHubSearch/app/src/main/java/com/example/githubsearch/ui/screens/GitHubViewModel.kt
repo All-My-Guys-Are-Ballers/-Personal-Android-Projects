@@ -37,8 +37,7 @@ sealed interface GitHubUiState{
     object Loading : GitHubUiState
 }
 
-class GitHubViewModel(page: Int,
-                    query: String) : ViewModel() {
+class GitHubViewModel() : ViewModel() {
     /** The mutable State that stores the status of the most recent request */
     var githubUiState: GitHubUiState by mutableStateOf(GitHubUiState.Loading)
 
@@ -46,7 +45,7 @@ class GitHubViewModel(page: Int,
      * Call getMarsPhotos() on init so we can display status immediately.
      */
     init {
-        getGitHubRepos(page,query)
+        getGitHubRepos(1,"VIPlearner")
     }
 
     /**
