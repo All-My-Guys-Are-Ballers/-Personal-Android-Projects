@@ -15,6 +15,8 @@
  */
 package com.example.githubsearch.ui.screens
 
+import android.content.ContentValues.TAG
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -24,15 +26,14 @@ import com.example.githubsearch.models.GithubRepoResponse
 import com.example.githubsearch.network.GitHubApi
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
-import retrofit2.Response
+import timber.log.Timber
 import java.io.IOException
-import java.time.temporal.TemporalQuery
 
 /**
  * UI state for the Home screen
  */
 sealed interface GitHubUiState{
-    data class Success(val response: Response<GithubRepoResponse>): GitHubUiState
+    data class Success(val response: GithubRepoResponse?): GitHubUiState
     object Error : GitHubUiState
     object Loading : GitHubUiState
 }
@@ -40,27 +41,27 @@ sealed interface GitHubUiState{
 class GitHubViewModel() : ViewModel() {
     /** The mutable State that stores the status of the most recent request */
     var githubUiState: GitHubUiState by mutableStateOf(GitHubUiState.Loading)
+    var page: Int = 1
+    var query: String = "Wordle"
 
-    /**
-     * Call getMarsPhotos() on init so we can display status immediately.
-     */
-    init {
-        getGitHubRepos(1,"VIPlearner")
-    }
 
-    /**
-     * Gets Mars photos information from the Mars API Retrofit service and updates the
-     */
-    private fun getGitHubRepos(
-        page: Int,
-        query: String
+    fun getGitHubRepos(
+        page:Int = 1,
+        query:String,
+        sort: String = "stars",
+        order: String = "desc"
     ) {
+        githubUiState = GitHubUiState.Loading
+
         viewModelScope.launch {
             githubUiState = try {
                 val response = GitHubApi.retrofitService.searchGithubRepo(
-                    page = page,
+                    page = page ,
+                    sort = sort,
+                    order = order,
                     query = query
-                )
+                ).body()
+                Timber.tag(TAG).d(response.toString())
                 GitHubUiState.Success(response)
             } catch (e: IOException) {
                 GitHubUiState.Error

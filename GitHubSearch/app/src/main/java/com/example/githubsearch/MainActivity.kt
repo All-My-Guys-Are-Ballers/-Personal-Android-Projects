@@ -2,24 +2,29 @@ package com.example.githubsearch
 
 import android.content.ContentValues.TAG
 import android.os.Bundle
-import android.os.StrictMode
-import android.os.StrictMode.ThreadPolicy
-import android.os.StrictMode.VmPolicy
-import android.util.Log
+
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -45,27 +50,14 @@ val exampleGithubRepo: GithubRepo = GithubRepo(
     forksCount = 79
 )
 
+var searchText = "Wordle"
+var searchPage = 1
+
 
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        StrictMode.setThreadPolicy(
-            ThreadPolicy.Builder()
-                .detectDiskReads()
-                .detectDiskWrites()
-                .detectNetwork() // or .detectAll() for all detectable problems
-                .penaltyLog()
-                .build()
-        )
-        StrictMode.setVmPolicy(
-            VmPolicy.Builder()
-                .detectLeakedSqlLiteObjects()
-                .detectLeakedClosableObjects()
-                .penaltyLog()
-                .penaltyDeath()
-                .build()
-        )
-        StrictMode.enableDefaults()
+        Timber.plant(Timber.DebugTree())
         super.onCreate(savedInstanceState)
         setContent {
             GitHubSearchTheme {
@@ -75,11 +67,9 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colors.background
                 ) {
                     val githubViewModel: GitHubViewModel = viewModel()
-                    when (githubViewModel.githubUiState) {
-                        is GitHubUiState.Success -> (githubViewModel.githubUiState as GitHubUiState.Success).response.body()?.items?.let { GitHubSearchScreen(repoList = it) }
-                        is GitHubUiState.Loading -> LoadingScreen()
-                        is GitHubUiState.Error -> ErrorScreen()
-                    }
+                    githubViewModel.getGitHubRepos(page = 1, query = "Wordle")
+                    GitHubSearchScreen(gitHubViewModel = githubViewModel)
+
                 }
             }
         }
@@ -91,27 +81,43 @@ fun Greeting(name: String) {
     Text(text = "Hello $name!")
 }
 
-@Preview
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun SearchBar(){
-    var text by remember { mutableStateOf(TextFieldValue("")) }
+fun SearchBar(gitHubViewModel: GitHubViewModel, searchText: String, onValueChange: (String) -> Unit){
 
-    Row(modifier = Modifier.fillMaxWidth()){
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+
+    Row(modifier = Modifier
+        .fillMaxWidth()
+        .padding(8.dp)){
         TextField(
-            value = text,
-            onValueChange = { text = it },
+            value = searchText,
+            onValueChange = onValueChange,
             modifier = Modifier.weight(1f),
             label = {
                 Text(
                     text = stringResource(id = R.string.search)
                 )
             },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = {
+                searchPage = 1
+                gitHubViewModel.getGitHubRepos(searchPage, searchText)
+                focusManager.clearFocus()
+            }),
+
             singleLine = true,
-            maxLines = 1,
             shape = RoundedCornerShape(32.dp)
         )
-        IconButton(onClick = { /*TODO*/ }, modifier = Modifier
-//            .align(Alignment.CenterVertically)
+        IconButton(onClick = {
+            searchPage = 1
+            gitHubViewModel.getGitHubRepos(searchPage , searchText)
+            keyboardController?.hide()
+                             },
+            modifier = Modifier
+
         ) {
             Icon(
                 imageVector = Icons.Filled.Search,
@@ -121,15 +127,60 @@ fun SearchBar(){
 }
 
 @Composable
-fun GitHubSearchScreen(repoList: List<GithubRepo>){
+fun GitHubSearchScreen(gitHubViewModel: GitHubViewModel ){
+    var searchText by remember {
+        mutableStateOf("Jetpack Compose")
+    }
     Scaffold(topBar = { TopAppBar() }){
-        Column(){
-            SearchBar()
-            if (repoList.isEmpty()) {
-                Text(text = "Error")
-            } else {
-                GitHubRepoItem(githubRepo = exampleGithubRepo)
+        Column {
+            SearchBar(gitHubViewModel, searchText) { searchText = it }
+            when (gitHubViewModel.githubUiState) {
+                is GitHubUiState.Success -> (gitHubViewModel.githubUiState as GitHubUiState.Success).response?.items?.let { it1 -> GithubRepoList(repoList = it1) }
+                is GitHubUiState.Loading -> LoadingScreen()
+                is GitHubUiState.Error -> ErrorScreen()
             }
+        }
+        Row(modifier = Modifier
+            .fillMaxWidth()
+            .padding(32.dp)
+            .fillMaxHeight(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween){
+            TextButton(
+                onClick = { if (searchPage > 1){
+                    searchPage-- }
+                          gitHubViewModel.getGitHubRepos(searchPage, searchText)},
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(16.dp),
+                colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.secondary)
+            ) {
+                Text(
+                    text = stringResource(id = R.string.previous),
+                    color = MaterialTheme.colors.onSecondary
+                )
+            }
+            TextButton(
+                onClick = { searchPage++
+                          gitHubViewModel.getGitHubRepos(searchPage, searchText)},
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(16.dp),
+                colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.secondary)
+
+            ) {
+                Text(
+                    text = stringResource(id = R.string.next),
+                    color = MaterialTheme.colors.onSecondary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun GithubRepoList(repoList: List<GithubRepo>){
+    LazyColumn {
+        items(repoList) {
+            GitHubRepoItem(githubRepo = it)
         }
     }
 }
@@ -138,15 +189,21 @@ fun GitHubSearchScreen(repoList: List<GithubRepo>){
 fun TopAppBar(){
     Text(
         text = "GitHub Search",
-        style = MaterialTheme.typography.h1
+        modifier = Modifier
+            .wrapContentSize(align = Alignment.Center)
+            .fillMaxWidth(),
+        style = MaterialTheme.typography.h1,
+        textAlign = TextAlign.Center
     )
 }
 
 @Preview
 @Composable
 fun GitHubRepoItem(modifier: Modifier = Modifier, githubRepo: GithubRepo = exampleGithubRepo){
-    Card(modifier = modifier) {
-        Column(){
+    Card(modifier = modifier
+        .fillMaxWidth()
+        .padding(8.dp), shape = RoundedCornerShape(12.dp), elevation = 4.dp) {
+        Column(modifier = Modifier.padding(8.dp)){
             Text(
                 text = githubRepo.name
             )
@@ -156,8 +213,11 @@ fun GitHubRepoItem(modifier: Modifier = Modifier, githubRepo: GithubRepo = examp
                     contentDescription = "Avatar of ${githubRepo.name}",
                     modifier = Modifier.size(32.dp)
                 )
+//                Text(
+//                    text = githubRepo.owner.avatarUrl
+//                )
                 Timber.tag(TAG).d("I'm looking for this%s", githubRepo.fullName)
-                if (githubRepo.fullName.isNotBlank()){
+                if (!githubRepo.fullName.isNullOrBlank()){
                     Text(
                         text = githubRepo.fullName
                     )
