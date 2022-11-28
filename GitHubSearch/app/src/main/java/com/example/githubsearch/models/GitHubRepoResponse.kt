@@ -13,6 +13,6 @@ data class GithubRepoResponse(
     val incompleteResults: Boolean?,
     @SerialName("items")
     val items: List<GithubRepo>?,
-    @SerialName("message")
-    val message: String?
+//    @SerialName("message")
+//    val message: String?
 )

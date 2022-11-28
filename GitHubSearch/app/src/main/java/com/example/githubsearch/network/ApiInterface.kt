@@ -2,6 +2,7 @@ package com.example.githubsearch.network
 
 import com.example.githubsearch.models.GithubRepoResponse
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import retrofit2.Response
@@ -13,8 +14,11 @@ import retrofit2.http.Query
 private const val BASE_URL =
     "https://api.github.com/search/"
 
+val json = Json { ignoreUnknownKeys = true}
+
+@OptIn(ExperimentalSerializationApi::class)
 private val retrofit = Retrofit.Builder()
-    .addConverterFactory(MoshiConverterFactory.create())
+    .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
     .baseUrl(BASE_URL)
     .build()
 

@@ -1,8 +1,7 @@
 package com.example.githubsearch
 
-import android.content.ContentValues.TAG
+import android.annotation.SuppressLint
 import android.os.Bundle
-
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.animateContentSize
@@ -22,7 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.modifier.modifierLocalConsumer
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -43,6 +42,7 @@ import timber.log.Timber
 val exampleGithubRepo: GithubRepo = GithubRepo(
     id = 76,
     name = "Joshua",
+    nodeId = "knsoko",
     fullName = "Joshua Owolabi",
     owner = Owner(
         login = "VIPlearner",
@@ -54,7 +54,6 @@ val exampleGithubRepo: GithubRepo = GithubRepo(
     forksCount = 79
 )
 
-var searchText = "Wordle"
 var searchPage = 1
 
 
@@ -71,7 +70,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colors.background
                 ) {
                     val githubViewModel: GitHubViewModel = viewModel()
-                    githubViewModel.getGitHubRepos(page = 1, query = "Wordle")
+                    githubViewModel.getGitHubRepos(page = 1, query = "Jetpack Compose")
                     GitHubSearchScreen(gitHubViewModel = githubViewModel)
 
                 }
@@ -211,43 +210,53 @@ fun GitHubRepoItem(modifier: Modifier = Modifier, githubRepo: GithubRepo = examp
         .fillMaxWidth()
         .padding(8.dp), shape = RoundedCornerShape(12.dp), elevation = 4.dp) {
         Row{
-            Column(modifier = Modifier
-                .padding(8.dp)
-                .weight(1f)
-                .animateContentSize(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow)
-                )
-            ) {
-                Text(
-                    text = githubRepo.name
-                )
-                Row {
-                    AsyncImage(
-                        model = githubRepo.owner.avatarUrl,
-                        contentDescription = "Avatar of ${githubRepo.name}",
-                        modifier = Modifier.size(32.dp)
-                    )
-                    if (!githubRepo.fullName.isNullOrBlank()) {
-                        Text(
-                            text = githubRepo.fullName
-                        )
-                    }
-                }
-                if (!githubRepo.description.isNullOrBlank()) {
-                    Text(
-                        text = githubRepo.description
-                    )
-                }
-
-                if(isItemExpanded){
-                    RepoStats(githubRepo = githubRepo)
-                }
-            }
+            GithubRepoInfo(modifier = Modifier.weight(1f),githubRepo = githubRepo, isItemExpanded)
             IconButton(onClick = { isItemExpanded = !isItemExpanded }) {
                 Icon(imageVector = if(isItemExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null)
             }
+        }
+    }
+}
+
+@Composable
+fun GithubRepoInfo(modifier: Modifier = Modifier,githubRepo: GithubRepo, isItemExpanded:Boolean) {
+    Column(
+        modifier = modifier
+            .padding(8.dp)
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            ),
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = githubRepo.name
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.SpaceBetween) {
+            AsyncImage(
+                model = githubRepo.owner.avatarUrl,
+                contentDescription = "Avatar of ${githubRepo.name}",
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(24.dp))
+            if (githubRepo.fullName.isNotBlank()) {
+                Text(
+                    text = githubRepo.fullName
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        if (!githubRepo.description.isNullOrBlank()) {
+            Text(
+                text = githubRepo.description
+            )
+        }
+
+        if(isItemExpanded){
+            RepoStats(githubRepo = githubRepo)
         }
     }
 }
@@ -257,17 +266,17 @@ fun RepoStats(githubRepo: GithubRepo){
     Row(modifier = Modifier
         .fillMaxWidth()
         .padding(4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-        Row() {
+        Row {
             Icon(imageVector = Icons.Filled.Star, contentDescription = "${githubRepo.stargazersCount} Stars")
             Spacer(modifier = Modifier.width(4.dp))
             Text(text = "${githubRepo.stargazersCount}")
         }
-        Row() {
+        Row {
             Icon(imageVector = Icons.Filled.Star, contentDescription = "${githubRepo.forksCount} Stars")
             Spacer(modifier = Modifier.width(4.dp))
             Text(text = "${githubRepo.forksCount}")
         }
-        Row() {
+        Row {
             Icon(imageVector = Icons.Filled.RemoveRedEye, contentDescription = "${githubRepo.watchersCount} Stars")
             Spacer(modifier = Modifier.width(4.dp))
             Text(
@@ -277,11 +286,6 @@ fun RepoStats(githubRepo: GithubRepo){
 
         }
     }
-}
-
-@Composable
-fun RepoStat(icon: ImageVector, number: Int){
-
 }
 
 @Composable
