@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "24026339257",
+    "project_id": "vehicle-number-identication",
+    "storage_bucket": "vehicle-number-identication.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:24026339257:android:1024a80f34b694480bc868",
+        "android_client_info": {
+          "package_name": "com.example.vehiclenumberidenticationapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "24026339257-j87g40fno5pd4furp00ikl2qinb4o3n7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDB02qRrXViX3jtUl9Qkqhzyhm9So-IP6E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "24026339257-j87g40fno5pd4furp00ikl2qinb4o3n7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
