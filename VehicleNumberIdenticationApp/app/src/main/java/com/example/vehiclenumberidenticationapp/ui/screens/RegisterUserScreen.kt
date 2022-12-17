@@ -1,59 +1,97 @@
 package com.example.vehiclenumberidenticationapp.ui.screens
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
+import android.content.ContentValues.TAG
+import android.net.Uri
+import android.util.Log
+import android.util.Patterns
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.vehiclenumberidenticationapp.Destination
 import com.example.vehiclenumberidenticationapp.R
+import com.example.vehiclenumberidenticationapp.models.PoliceUser
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.ktx.userProfileChangeRequest
 
 @Composable
-fun RegisterUserScreen(navController: NavController){
+fun RegisterUserScreen(navController: NavController, auth: FirebaseAuth, policeUser: PoliceUser){
     var email by remember { mutableStateOf("") }
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
     var password by remember { mutableStateOf("") }
-    var showPassword
+    var showConfirmPassword by remember { mutableStateOf(false) }
     var confirmPassword by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
+    val isEmailValid by derivedStateOf {
+        Patterns.EMAIL_ADDRESS.matcher(policeUser.email).matches()
+    }
+    val isPasswordValid by derivedStateOf {
+        policeUser.password.length > 7 && policeUser.password == confirmPassword
+    }
+    var isInvalidPassword by remember {
+        mutableStateOf(false )
+    }
+    var isInvalidEmail by remember {
+        mutableStateOf(false )
+    }
 
+    Scaffold(topBar = { RegisterUserTopAppBar() }) {
+        Column(modifier = Modifier
+            .fillMaxSize()
+            .wrapContentSize()) {
+            AnimatedVisibility(visible = isInvalidPassword,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ){
+                Text(text = stringResource(id = R.string.invalid_credentials),
+                    color = Color.Red,
+                    style = MaterialTheme.typography.body1
+                )
+            }
+            AnimatedVisibility(visible = isInvalidEmail,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ){
+                Text(text = stringResource(id = R.string.invalid_email),
+                    color = Color.Red,
+                    style = MaterialTheme.typography.body1
+                )
+            }
 
-    Scaffold() {
-        Column() {
             NamesTextField(
-                modifier = Modifier,
-                firstName = firstName,
-                lastName = lastName,
-                onFirstNameChange = {firstName = it},
-                onLastNameChange = {lastName = it},
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+                firstName = policeUser.firstName,
+                lastName = policeUser.lastName,
+                onFirstNameChange = {policeUser.firstName = it},
+                onLastNameChange = {policeUser.lastName = it},
                 focusManager = focusManager
             )
 
-
             OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
+                value = policeUser.email,
+                onValueChange = { policeUser.email = it },
+                modifier = Modifier.align(Alignment.CenterHorizontally),
                 label = {
                     Text(text = stringResource(id = R.string.email))
                 },
@@ -69,40 +107,24 @@ fun RegisterUserScreen(navController: NavController){
                 }
             )
 
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = {
-                    Text(text = stringResource(id = R.string.password))
-                },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done,
-                    keyboardType = KeyboardType.Password
-                ),
-                keyboardActions = KeyboardActions(onDone = {
-                    focusManager.clearFocus()
-                }),
-                leadingIcon = {
-                    Icon(imageVector = Icons.Filled.Lock, contentDescription = "Lock")
-                },
-                trailingIcon = {},
-                visualTransformation = PasswordVisualTransformation()
-            )
+            PasswordTextField(modifier = Modifier.align(Alignment.CenterHorizontally), password = policeUser.password, onValueChange = {policeUser.password = it}, focusManager = focusManager)
+            ConfirmPasswordTextField(modifier = Modifier.align(Alignment.CenterHorizontally), confirmPassword = confirmPassword, onValueChange = {confirmPassword = it}, focusManager = focusManager)
+            
+            Spacer(modifier = Modifier.height(20.dp))
+            
             Button(onClick = {
-                auth.signInWithEmailAndPassword(email, password)
-                    .addOnCompleteListener {
-                        if(it.isSuccessful){
-                            navController.navigate(Destination.PoliceUserPage.createRoute(email))
-                        }
-                        else{
-                            isWrongUsernameOrPassword = false
-                        }
-                    }
+                if(!isEmailValid) isInvalidEmail = true
+                else if (!isPasswordValid) isInvalidPassword = true
+                else{
+                    /*TODO*/
+                }
             },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = isEmailValid && isPasswordValid
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .width(240.dp),
+//                enabled = isEmailValid && isPasswordValid
             ) {
-                Text(text = stringResource(id = R.string.login))
+                Text(text = stringResource(id = R.string.register))
             }
         }
 
@@ -111,11 +133,11 @@ fun RegisterUserScreen(navController: NavController){
 
 @Composable
 fun NamesTextField(modifier: Modifier = Modifier, firstName: String, lastName: String, onFirstNameChange:(String) -> Unit, onLastNameChange: (String) -> Unit, focusManager:FocusManager){
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(12.dp)){
+    Column(modifier = modifier){
         OutlinedTextField(
             value = firstName,
             onValueChange = onFirstNameChange,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.align(Alignment.CenterHorizontally),
             label = {
                 Text(text = stringResource(id = R.string.first_name))
             },
@@ -134,7 +156,7 @@ fun NamesTextField(modifier: Modifier = Modifier, firstName: String, lastName: S
         OutlinedTextField(
             value = lastName,
             onValueChange = onLastNameChange,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.align(Alignment.CenterHorizontally),
             label = {
                 Text(text = stringResource(id = R.string.last_name))
             },
@@ -150,4 +172,125 @@ fun NamesTextField(modifier: Modifier = Modifier, firstName: String, lastName: S
             }
         )
     }
+}
+
+@Composable
+fun PasswordTextField(modifier: Modifier = Modifier, password: String, onValueChange: (String) -> Unit, focusManager: FocusManager){
+    var showPassword by remember { mutableStateOf(false) }
+    OutlinedTextField(
+        value = password,
+        onValueChange = onValueChange,
+        modifier = modifier,
+        label = {
+            Text(text = stringResource(id = R.string.password))
+        },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next,
+            keyboardType = KeyboardType.Password
+        ),
+        keyboardActions = KeyboardActions(onNext = {
+            focusManager.clearFocus()
+        }),
+        leadingIcon = {
+            Icon(imageVector = Icons.Filled.Lock, contentDescription = "Password Icon")
+        },
+        trailingIcon = {
+            if (showPassword) {
+                IconButton(onClick = { showPassword = !showPassword }){
+                    Icon(
+                        imageVector = Icons.Filled.Visibility,
+                        contentDescription = "Password Visibility On"
+                    )
+                }
+            } else {
+                IconButton(onClick = { showPassword = !showPassword }){
+                    Icon(
+                        imageVector = Icons.Filled.VisibilityOff,
+                        contentDescription = "Password Visibility Off"
+                    )
+                }
+            }
+        },
+        visualTransformation = if (!showPassword) PasswordVisualTransformation() else VisualTransformation.None
+    )
+}
+
+@Composable
+fun ConfirmPasswordTextField(modifier: Modifier = Modifier, confirmPassword: String, onValueChange: (String) -> Unit, focusManager: FocusManager){
+    var showPassword by remember { mutableStateOf(false) }
+    OutlinedTextField(
+        value = confirmPassword,
+        onValueChange = onValueChange,
+        modifier = modifier,
+        label = {
+            Text(text = stringResource(id = R.string.confirm_password))
+        },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next,
+            keyboardType = KeyboardType.Password
+        ),
+        keyboardActions = KeyboardActions(onNext = {
+            focusManager.clearFocus()
+        }),
+        leadingIcon = {
+            Icon(imageVector = Icons.Filled.Lock, contentDescription = "Password Icon")
+        },
+        trailingIcon = {
+            if (showPassword) {
+                IconButton(onClick = { showPassword = !showPassword }){
+                    Icon(
+                        imageVector = Icons.Filled.Visibility,
+                        contentDescription = "Password Visibility On"
+                    )
+                }
+            } else {
+                IconButton(onClick = { showPassword = !showPassword }){
+                    Icon(
+                        imageVector = Icons.Filled.VisibilityOff,
+                        contentDescription = "Password Visibility Off"
+                    )
+                }
+            }
+        },
+        visualTransformation = if (!showPassword) PasswordVisualTransformation() else VisualTransformation.None
+    )
+}
+
+
+@Composable
+fun RegisterUserTopAppBar(){
+    Row() {
+        IconButton(onClick = { /*TODO*/ }){
+            Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = "Go back")
+        }
+
+        Text(
+            text = stringResource(id = R.string.create_account),
+            modifier = Modifier.align(Alignment.CenterVertically),
+            style = MaterialTheme.typography.h2,
+            textAlign = TextAlign.Center
+        )
+
+    }
+}
+
+fun createUser(auth: FirebaseAuth, policeUser: PoliceUser){
+    auth.createUserWithEmailAndPassword(policeUser.email, policeUser.password)
+        .addOnCompleteListener() { task ->
+            if (task.isSuccessful) {
+                // Sign in success, update UI with the signed-in user's information
+                Log.d(TAG, "createUserWithEmail:success")
+                //                updateUI(user)
+                auth.currentUser?.updateProfile(userProfileChangeRequest {
+                    displayName = policeUser.fullName
+                })
+            } else {
+                // If sign in fails, display a message to the user.
+                Log.w(TAG, "createUserWithEmail:failure", task.exception)
+//                Toast.makeText(baseContext, "Authentication failed.",
+//                    Toast.LENGTH_SHORT).show()
+//                updateUI(null)
+            }
+        }
+
 }

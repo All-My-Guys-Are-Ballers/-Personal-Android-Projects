@@ -7,11 +7,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.example.vehiclenumberidenticationapp.R
-import com.example.vehiclenumberidenticationapp.models.PoliceUser
 
 @Composable
 fun PoliceUserPage(policeUser: String){
-    Text(text = stringResource(id = R.string.loginas,policeUser),
+    Text(text = stringResource(id = R.string.login_as,policeUser),
         modifier = Modifier.fillMaxSize().wrapContentSize()
     )
 }

@@ -24,6 +24,7 @@ import com.example.vehiclenumberidenticationapp.models.PoliceUser
 import com.example.vehiclenumberidenticationapp.ui.screens.LoginChoiceScreen
 import com.example.vehiclenumberidenticationapp.ui.screens.LoginPage
 import com.example.vehiclenumberidenticationapp.ui.screens.PoliceUserPage
+import com.example.vehiclenumberidenticationapp.ui.screens.RegisterUserScreen
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 
@@ -38,10 +39,17 @@ sealed class Destination (val route: String) {
 
 }
 
+//val currentUser: PoliceUser
+//    get() {
+//
+//    }
+
 class MainActivity : ComponentActivity() {
     private val auth by lazy{
         Firebase.auth
     }
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -52,7 +60,8 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colors.background
                 ) {
                     val navController = rememberNavController()
-                    VehicleNumberIdentificationAppNavigation(navController = navController)
+//                    VehicleNumberIdentificationAppNavigation(navController = navController)
+                    RegisterUserScreen(navController = navController, auth = auth)
                 }
             }
         }
