@@ -12,6 +12,7 @@
     <string name="confirm_password">Confirm Password</string>
     <string name="register">Register</string>
     <string name="invalid_credentials">Password not long enough or Passwords don\'t match</string>
-    <string name="invalid_email">Inavlid Email</string>
+    <string name="invalid_email">Invalid Email</string>
     <string name="create_account">Create an Account</string>
+    <string name="creating_account">Creating account</string>
 </resources>

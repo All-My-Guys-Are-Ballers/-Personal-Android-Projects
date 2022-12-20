@@ -33,7 +33,7 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 
 @Composable
-fun LoginPage(modifier: Modifier = Modifier, navController: NavController, isAdmin: Boolean, auth:FirebaseAuth){
+fun LoginPage(modifier: Modifier = Modifier, navController: NavController, isAdmin: Boolean = false, auth:FirebaseAuth){
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
@@ -136,6 +136,12 @@ fun LoginPage(modifier: Modifier = Modifier, navController: NavController, isAdm
                     enabled = isEmailValid && isPasswordValid
                 ) {
                     Text(text = stringResource(id = R.string.login))
+                }
+
+                Button(onClick = {navController.navigate(Destination.RegisterUserScreen.route) }) {
+                    Text(text = stringResource(id = R.string.create_account),
+//                        style = MaterialTheme.typography.h4
+                    )
                 }
             }
         }

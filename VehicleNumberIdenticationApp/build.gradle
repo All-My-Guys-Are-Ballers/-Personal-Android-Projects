@@ -5,6 +5,8 @@ buildscript {
     }
     ext {
         compose_ui_version = '1.1.1'
+        camera_version = ''
+        camerax_version = ''
     }
     dependencies {
         classpath 'com.google.gms:google-services:4.3.14'

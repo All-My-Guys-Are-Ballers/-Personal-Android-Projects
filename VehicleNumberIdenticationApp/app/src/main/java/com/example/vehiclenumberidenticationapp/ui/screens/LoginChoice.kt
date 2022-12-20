@@ -21,12 +21,12 @@ fun LoginChoiceScreen(navController: NavHostController){
         Column(modifier = Modifier
             .fillMaxSize()
             .wrapContentSize()) {
-            TextButton(onClick = { navController.navigate(Destination.LoginPage.createRoute(true)) }
+            TextButton(onClick = { navController.navigate(Destination.LoginPage.route) }
             ) {
                 Text(text = "Login as an Admin")
             }
             Spacer(modifier = Modifier.height(16.dp))
-            TextButton(onClick = { navController.navigate(Destination.LoginPage.createRoute(false)) }) {
+            TextButton(onClick = { navController.navigate(Destination.LoginPage.route) }) {
                 Text(text = "Login as a User")
             }
         }

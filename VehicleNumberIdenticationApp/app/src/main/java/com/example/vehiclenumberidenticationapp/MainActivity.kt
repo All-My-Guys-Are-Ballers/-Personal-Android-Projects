@@ -1,11 +1,16 @@
 package com.example.vehiclenumberidenticationapp
 
+import android.Manifest
 import android.content.ContentValues
+import android.content.ContentValues.TAG
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
@@ -14,6 +19,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -25,30 +32,46 @@ import com.example.vehiclenumberidenticationapp.ui.screens.LoginChoiceScreen
 import com.example.vehiclenumberidenticationapp.ui.screens.LoginPage
 import com.example.vehiclenumberidenticationapp.ui.screens.PoliceUserPage
 import com.example.vehiclenumberidenticationapp.ui.screens.RegisterUserScreen
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 
 sealed class Destination (val route: String) {
     object LoginChoicePage: Destination ( "login_choice")
-    object LoginPage: Destination( "login_page/{isAdmin}") {
-        fun createRoute (isAdmin: Boolean) = "login_page/$isAdmin"
-    }
+    object LoginPage: Destination( "login_page")
     object PoliceUserPage: Destination ( "police_user_page/{policeUser}"){
         fun createRoute (policeUser: String) = "police_user_page/$policeUser"
     }
-
+    object RegisterUserScreen: Destination("register_user_screen")
 }
 
-//val currentUser: PoliceUser
-//    get() {
+
+//private class YourImageAnalyzer : ImageAnalysis.Analyzer {
 //
+//    override fun analyze(imageProxy: ImageProxy) {
+//        val mediaImage = imageProxy.image
+//        if (mediaImage != null) {
+//            val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+//            // Pass image to an ML Kit Vision API
+//            // ...
+//        }
 //    }
+//}
 
 class MainActivity : ComponentActivity() {
     private val auth by lazy{
         Firebase.auth
     }
-
+    val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()){
+            isGranted -> if (isGranted){
+                Log.i(TAG, "Permission Granted") }
+        else{
+            Log.i(TAG, "Permission Denied") }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,22 +83,38 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colors.background
                 ) {
                     val navController = rememberNavController()
-//                    VehicleNumberIdentificationAppNavigation(navController = navController)
-                    RegisterUserScreen(navController = navController, auth = auth)
+                    VehicleNumberIdentificationAppNavigation(navController = navController, auth = auth)
                 }
             }
+        }
+        requestCameraPermission()
+    }
+
+    private fun requestCameraPermission() {
+        when {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                Log.i("kilo", "Permission previously granted")
+            }
+
+            ActivityCompat.shouldShowRequestPermissionRationale(
+                this,
+                Manifest.permission.CAMERA
+            ) -> Log.i("kilo", "Show camera permissions dialog")
+            else -> requestPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 }
 
 @Composable
-fun VehicleNumberIdentificationAppNavigation(navController: NavHostController){
+fun VehicleNumberIdentificationAppNavigation(navController: NavHostController, auth: FirebaseAuth){
     val ctx = LocalContext.current
-    NavHost(navController = navController, startDestination = "login_choice"){
+    NavHost(navController = navController, startDestination = "login_page"){
         composable(Destination.LoginChoicePage.route) { LoginChoiceScreen(navController) }
-        composable(Destination.LoginPage.route){ navBackStackEntry ->
-            val isAdmin = navBackStackEntry.arguments?.getString("isAdmin").toBoolean()
-            LoginPage(navController = navController, isAdmin = isAdmin, auth = Firebase.auth)
+        composable(Destination.LoginPage.route){
+            LoginPage(navController = navController, auth = Firebase.auth)
         }
         composable(Destination.PoliceUserPage.route){ navBackStackEntry ->
             val email = navBackStackEntry.arguments?.getString("policeUser")
@@ -83,5 +122,9 @@ fun VehicleNumberIdentificationAppNavigation(navController: NavHostController){
                 PoliceUserPage(policeUser = email)
             }
         }
+        composable(Destination.RegisterUserScreen.route){ RegisterUserScreen(
+            navController = navController,
+            auth = auth
+        )}
     }
 }
