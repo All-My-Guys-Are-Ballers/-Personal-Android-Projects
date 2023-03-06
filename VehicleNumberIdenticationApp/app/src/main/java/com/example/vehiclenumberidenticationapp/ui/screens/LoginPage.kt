@@ -125,7 +125,9 @@ fun LoginPage(modifier: Modifier = Modifier, navController: NavController, isAdm
                                  auth.signInWithEmailAndPassword(email, password)
                                      .addOnCompleteListener {
                                          if(it.isSuccessful){
-                                             navController.navigate(Destination.PoliceUserPage.createRoute(email))
+                                             navController.navigate(Destination.PoliceUserPage.createRoute(
+                                                 auth.currentUser?.displayName.toString()
+                                             ))
                                          }
                                          else{
                                              isWrongUsernameOrPassword = false
