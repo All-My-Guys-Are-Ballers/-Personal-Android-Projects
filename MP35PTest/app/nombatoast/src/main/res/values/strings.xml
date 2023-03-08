@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright (c) 2022. Nomba Financial Services
+  ~
+  ~ author: Victor Shoaga
+  ~ email: victor.shoaga@nomba.com
+  ~ github: @inventvictor
+  ~
+  -->
+<resources>
+    <string name="follow">Follow</string>
+    <string name="unfollow">Unfollow</string>
+    <string name="browse_topic">Browse topic</string>
+</resources>
