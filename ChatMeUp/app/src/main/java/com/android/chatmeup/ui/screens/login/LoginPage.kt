@@ -7,7 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -16,6 +16,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.chatmeup.R
 import com.android.chatmeup.ui.theme.cmuBlue
 import com.android.chatmeup.ui.theme.cmuWhite
@@ -26,9 +27,33 @@ fun LoginPage(
     context: Context = LocalContext.current,
     isDarkTheme: Boolean = false
 ){
-//    val loginPageViewModel: LoginPageViewModel by viewModels()
-//
-//    val loginEventStatus by loginPageViewModel.loginEventStatus.collectAsState()
+    val loginPageViewModel = viewModel<LoginPageViewModel>()
+
+    val loginEventStatus by loginPageViewModel.loginEventStatus.collectAsState()
+
+    val inputPhoneNodialogVisibility  = remember {
+        mutableStateOf(false)
+    }
+
+    val inputOTPDialogVisibility = remember{
+        mutableStateOf(false)
+    }
+
+    when(loginEventStatus){
+        LoginStatus.INIT -> {
+            inputPhoneNodialogVisibility.value = false
+            inputOTPDialogVisibility.value = false
+        }
+        LoginStatus.INPUT_PHONE_NO -> {
+            inputPhoneNodialogVisibility.value = true
+            inputOTPDialogVisibility.value = false
+
+        }
+        LoginStatus.INPUT_CODE -> {
+            inputPhoneNodialogVisibility.value = false
+            inputOTPDialogVisibility.value = true
+        }
+    }
 
     Scaffold(backgroundColor = MaterialTheme.colors.background) {
         Box(modifier = Modifier
