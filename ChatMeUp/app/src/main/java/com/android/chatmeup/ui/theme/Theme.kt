@@ -10,14 +10,16 @@ private val DarkColorPalette = darkColors(
     primary = cmuWhite,
     primaryVariant = Purple700,
     secondary = Teal200,
-    background = cmuBlack
+    background = cmuBlack,
+    onBackground = cmuDarkGrey
 )
 
 private val LightColorPalette = lightColors(
     primary = cmuBlack,
     primaryVariant = Purple700,
     secondary = Teal200,
-    background = cmuWhite
+    background = cmuWhite,
+    onBackground = cmuLightGrey
 
     /* Other default colors to override
     background = Color.White,
