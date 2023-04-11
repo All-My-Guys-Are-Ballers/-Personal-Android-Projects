@@ -16,6 +16,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.chatmeup.R
 import com.android.chatmeup.ui.theme.cmuBlue
@@ -30,6 +31,16 @@ fun LoginPage(
     val loginPageViewModel = viewModel<LoginPageViewModel>()
 
     val loginEventStatus by loginPageViewModel.loginEventStatus.collectAsState()
+
+    val inputPhoneNoEventState by loginPageViewModel.inputPhoneNoEventState.collectAsState()
+
+    val phoneNo: MutableState<String> = remember {
+        mutableStateOf("")
+    }
+
+    val isValidPhoneNo = remember {
+        mutableStateOf(false)
+    }
 
     val inputPhoneNodialogVisibility  = remember {
         mutableStateOf(false)
@@ -53,6 +64,18 @@ fun LoginPage(
             inputPhoneNodialogVisibility.value = false
             inputOTPDialogVisibility.value = true
         }
+    }
+
+    InputPhoneNoDialog(
+        isInputPhoneNoDialogVisible = inputPhoneNodialogVisibility,
+        phoneNo = phoneNo,
+        isValidPhoneNo = isValidPhoneNo,
+        inputPhoneNoEventState = inputPhoneNoEventState,
+        onBackClick = {
+            loginPageViewModel.onEventTriggered(
+                event = LoginPageViewModel.LoginEvents.InitLoginEvent
+            )
+        }) {
     }
 
     Scaffold(backgroundColor = MaterialTheme.colors.background) {
@@ -88,7 +111,11 @@ fun LoginPage(
                     .fillMaxWidth()
                     .padding(bottom = 20.dp, start = 20.dp, end = 20.dp)
             ) {
-                BottomSection(onClickStart = {TODO()})
+                BottomSection(onClickStart = {
+                    loginPageViewModel.onEventTriggered(
+                        event = LoginPageViewModel.LoginEvents.InputPhoneNoEvent,
+                    )
+                })
             }
         }
     }

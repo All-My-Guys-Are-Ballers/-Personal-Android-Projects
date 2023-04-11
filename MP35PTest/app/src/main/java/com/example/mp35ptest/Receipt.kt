@@ -1,7 +1,6 @@
 package com.example.mp35ptest
 
 import android.graphics.Bitmap
-import java.time.chrono.ChronoLocalDateTime
 
 data class Receipt(
     val logo: Bitmap,

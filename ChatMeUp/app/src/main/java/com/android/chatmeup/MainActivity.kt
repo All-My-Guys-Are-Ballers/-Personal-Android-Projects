@@ -17,16 +17,16 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import com.android.chatmeup.ui.screens.login.InputPhoneNoDialog
+import com.android.chatmeup.ui.screens.login.InputPhoneNoEventState
 import com.android.chatmeup.ui.screens.login.LoginPage
 import com.android.chatmeup.ui.theme.ChatMeUpTheme
 import com.android.chatmeup.ui.theme.cmuBlack
 import com.android.chatmeup.ui.theme.cmuWhite
-import com.google.accompanist.insets.ProvideWindowInsets
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-//        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
         setContent {
             val systemUiController = rememberSystemUiController()
@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colors.background
                 ) {
-                    InputPhoneNoDialog()
+                    LoginPage()
                 }
             }
         }
