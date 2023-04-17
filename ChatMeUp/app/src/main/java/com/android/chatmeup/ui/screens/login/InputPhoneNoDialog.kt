@@ -130,12 +130,9 @@ fun InputPhoneNoDialog(
                                 modifier = Modifier.padding(top = 50.dp),
                                 text = phoneNo.value,
                                 onValueChange = {
-                                    Timber.tag("InputPhoneNoDialog")
-                                        .d("Phone Number is ${phoneNo.value}")
                                     if (phoneNo.value.length < MAX_PHONE_NO_LENGTH) {
                                         phoneNo.value = it
                                     }
-                                    Timber.tag(TAG).d("Phone Number is ${phoneNo.value}")
                                 },
                                 focusedBorderColor = colors.primary,
                                 unfocusedBorderColor = colors.primary,
