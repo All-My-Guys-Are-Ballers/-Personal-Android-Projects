@@ -17,13 +17,15 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.navigation.compose.rememberNavController
 import com.android.chatmeup.datastore.CmuDataStoreRepository
-import com.android.chatmeup.ui.CmuApp
+import com.android.chatmeup.ui.screens.homescreen.HomeScreen
 import com.android.chatmeup.ui.theme.ChatMeUpTheme
 import com.android.chatmeup.ui.theme.cmuBlack
 import com.android.chatmeup.ui.theme.cmuWhite
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -32,6 +34,7 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
     private lateinit var chatMeUpApp: CmuApplication
     val auth: FirebaseAuth = Firebase.auth
+    val database: FirebaseDatabase = Firebase.database
 
     @Inject
     lateinit var cmuDataStoreRepository: CmuDataStoreRepository
@@ -68,12 +71,13 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colors.background
                 ) {
-                    CmuApp(
-                        context = applicationContext,
-                        activity = this,
-                        navController = navController,
-                        chatMeUpApp = chatMeUpApp
-                    )
+                    HomeScreen(context = applicationContext, activity = chatMeUpApp.getCurrentActivity() )
+//                    CmuApp(
+//                        context = applicationContext,
+//                        activity = this,
+//                        navController = navController,
+//                        chatMeUpApp = chatMeUpApp
+//                    )
                 }
             }
         }

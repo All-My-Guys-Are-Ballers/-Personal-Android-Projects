@@ -173,7 +173,7 @@ val LightTypography = Typography(
     body1 = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
+        fontSize = 18.sp,
         letterSpacing = (0.5).sp,
         color = cmuBlack
     ),

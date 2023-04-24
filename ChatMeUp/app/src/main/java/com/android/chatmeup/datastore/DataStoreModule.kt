@@ -31,7 +31,4 @@ object DataStoreModule {
         return CmuDataStoreRepositoryImpl(dataStore)
     }
 
-//    @Binds
-//    @Singleton
-//    abstract fun bindsCmuDataStoreRepository(impl: CmuDataStoreRepositoryImpl): CmuDataStoreRepositoryImpl
 }
