@@ -9,10 +9,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
-import com.android.chatmeup.datastore.CmuDataStoreRepository
+import com.android.chatmeup.data.datastore.CmuDataStoreRepository
+import com.android.chatmeup.data.db.repository.AuthRepository
+import com.android.chatmeup.ui.DefaultViewModel
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
+import com.fredrikbogg.android_chat_app.data.Result
+import com.fredrikbogg.android_chat_app.data.model.Login
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,14 +32,17 @@ enum class LoginStatus{
     INIT,
     LOADING,
     DONE,
+    ERROR,
 }
 
 @HiltViewModel
-class LoginScreenViewModel @Inject constructor(cmuDataStoreRepository: CmuDataStoreRepository) : ViewModel(){
+class LoginScreenViewModel @Inject constructor(cmuDataStoreRepository: CmuDataStoreRepository) : DefaultViewModel(){
     var cmuDataStoreRepository: CmuDataStoreRepository? = null
     val tag: String = "LoginScreenViewModel"
     val loginEventStatus = MutableStateFlow(LoginStatus.INIT)
-    private val auth = Firebase.auth
+    private val authRepository = AuthRepository()
+    val loginCredentials = MutableStateFlow("")
+
 
     init {
         this.cmuDataStoreRepository = cmuDataStoreRepository
@@ -47,6 +55,7 @@ class LoginScreenViewModel @Inject constructor(cmuDataStoreRepository: CmuDataSt
         event: LoginEvents,
         email: String = "",
         password: String = "",
+        onLoggedIn: () -> Unit = {},
     ){
         when(event){
             LoginEvents.InitLoginEvent -> {
@@ -54,41 +63,48 @@ class LoginScreenViewModel @Inject constructor(cmuDataStoreRepository: CmuDataSt
             }
             LoginEvents.LoadingEvent -> {
                 loginEventStatus.value = LoginStatus.LOADING
-                if (activity != null) {
-                    auth.signInWithEmailAndPassword(email, password).addOnCompleteListener(activity) { task ->
-                        if (task.isSuccessful) {
-                            // Sign in success, update UI with the signed-in user's information
-                            Timber.tag(tag).d("signInUserWithEmail:success")
-                            onEventTriggered(activity, context, LoginEvents.DoneEvent)
-                        } else {
-                            // If sign in fails, display a message to the user.
-                            Timber.tag(tag).w(task.exception, "signInUserWithEmail:failure")
-                            onEventTriggered(activity, context, LoginEvents.InitLoginEvent)
-                            Handler(Looper.getMainLooper()).postDelayed({
-                                CmuToast.createFancyToast(
-                                    context,
-                                    activity,
-                                    "Login",
-                                    "Unable to login. Incorrect Email or password",
-                                    CmuToastStyle.ERROR,
-                                    CmuToastDuration.SHORT
-                                )
-                            }, 200)
-                        }
-                    }
-                }
+                login(
+                    email = email,
+                    password = password,
+                    context = context,
+                    activity = activity,
+                    onLoggedIn = onLoggedIn
+                )
+            }
+            LoginEvents.ErrorEvent -> {
+                loginEventStatus.value = LoginStatus.ERROR
+                Handler(Looper.getMainLooper()).postDelayed({
+                    CmuToast.createFancyToast(
+                        context,
+                        activity,
+                        "Login Error",
+                        "Invalid Username or Password",
+                        CmuToastStyle.ERROR,
+                        CmuToastDuration.SHORT
+                    )
+                }, 200)
+                onEventTriggered(
+                    activity, context, LoginEvents.InitLoginEvent
+                )
             }
             LoginEvents.DoneEvent -> {
                 loginEventStatus.value = LoginStatus.DONE
-                //navigate to
+                saveUserId(Firebase.auth.uid)
+                onLoggedIn()
             }
+        }
+    }
+
+    @WorkerThread
+    private fun saveUserId(value: String?) = viewModelScope.launch(Dispatchers.IO) {
+        if (value != null) {
+            cmuDataStoreRepository?.saveUserId(value)
         }
     }
 
     @WorkerThread
     private fun saveLoginCredentials(value: String) = viewModelScope.launch(Dispatchers.IO) {
         cmuDataStoreRepository?.saveLoginCredentials(value)
-//        _terminalPrintModeState.value = value
     }
 
     @WorkerThread
@@ -96,15 +112,50 @@ class LoginScreenViewModel @Inject constructor(cmuDataStoreRepository: CmuDataSt
         Dispatchers.IO) {
         cmuDataStoreRepository?.getLoginCredentials()?.collect { state ->
             withContext(Dispatchers.IO) {
-//                _terminalPrintModeState.value = state
+                loginCredentials.value = state
+            }
+        }
+    }
+
+    private fun login(
+        email: String,
+        password: String,
+        activity: Activity?,
+        context: Context,
+        onLoggedIn: () -> Unit
+    ) {
+        val login = Login(email, password)
+
+        authRepository.loginUser(login) { result: Result<FirebaseUser> ->
+            onResult(null, result)
+            if (result is Result.Success) {
+                onEventTriggered(
+                    activity = activity,
+                    context = context,
+                    event = LoginEvents.DoneEvent,
+                    onLoggedIn = onLoggedIn
+                )
+            }
+            else if (result is Result.Error) {
+                onEventTriggered(
+                    activity = activity,
+                    context = context,
+                    event = LoginEvents.ErrorEvent,
+                    onLoggedIn = onLoggedIn
+                )
+            }
+            else {
+//                Timber.tag(tag).d("Still Loading")
             }
         }
     }
 
 
+
     sealed class LoginEvents(){
         object InitLoginEvent: LoginEvents()
         object LoadingEvent: LoginEvents()
+        object ErrorEvent: LoginEvents()
         object DoneEvent: LoginEvents()
     }
 

@@ -8,7 +8,9 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import com.android.chatmeup.MainActivity
-import com.android.chatmeup.datastore.CmuDataStoreRepository
+import com.android.chatmeup.data.datastore.CmuDataStoreRepository
+import com.android.chatmeup.ui.screens.homescreen.HomeDestination
+import com.android.chatmeup.ui.screens.homescreen.homeGraph
 import com.android.chatmeup.ui.screens.loginscreen.loginGraph
 import com.android.chatmeup.ui.screens.registeruserscreen.RegisterUserDestination
 import com.android.chatmeup.ui.screens.registeruserscreen.registerUserGraph
@@ -37,7 +39,7 @@ fun CmuNavHost(
                 onNavigateToDestination(it, RegisterUserDestination, RegisterUserDestination.route)
             },
             onLoggedIn = {
-
+                onNavigateToDestination(it, HomeDestination, HomeDestination.route)
             },
         )
 
@@ -47,5 +49,9 @@ fun CmuNavHost(
             onBackClick = onBackClick,
         )
 
+        homeGraph(
+            context = context,
+            activity = activity,
+        )
     }
 }

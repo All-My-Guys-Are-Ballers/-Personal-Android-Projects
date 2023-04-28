@@ -2,7 +2,7 @@ package com.android.chatmeup.ui.screens.loginscreen
 
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.android.chatmeup.datastore.CmuDataStoreRepository
+import com.android.chatmeup.data.datastore.CmuDataStoreRepository
 
 @Composable
 fun loginScreenViewModelProvider(

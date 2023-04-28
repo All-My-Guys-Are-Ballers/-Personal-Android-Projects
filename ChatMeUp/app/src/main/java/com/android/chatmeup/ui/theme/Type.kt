@@ -1,6 +1,6 @@
 package com.android.chatmeup.ui.theme
 
-import androidx.compose.material.Typography
+import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -17,191 +17,165 @@ val Inter = FontFamily(
 
 // Set of Material typography styles to start with
 val DarkTypography = Typography(
-    h1 = TextStyle(
+    displayLarge = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Light,
         fontSize = 96.sp,
         letterSpacing = (-1.5).sp,
-        color = cmuWhite
     ),
-    h2 = TextStyle(
+    displayMedium = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Light,
         fontSize = 60.sp,
         letterSpacing = (-0.5).sp,
-        color = cmuWhite
 
     ),
-    h3 = TextStyle(
+    displaySmall = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
         fontSize = 48.sp,
         letterSpacing = 0.sp,
-        color = cmuWhite
 
     ),
-    h4 = TextStyle(
+    headlineMedium = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
         fontSize = 34.sp,
         letterSpacing = (0.25).sp,
-        color = cmuWhite
     ),
-    h5 = TextStyle(
+    headlineSmall = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
         fontSize = 30.sp,
         letterSpacing = (0).sp,
-        color = cmuWhite
     ),
-    h6 = TextStyle(
+    titleLarge = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
         fontSize = 20.sp,
         letterSpacing = (0.15).sp,
-        color = cmuWhite
     ),
-    subtitle1 = TextStyle(
+    titleMedium = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         letterSpacing = (0.15).sp,
-        color = cmuWhite
     ),
-    subtitle2 = TextStyle(
+    titleSmall = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         letterSpacing = (0.1).sp,
-        color = cmuWhite
     ),
-    body1 = TextStyle(
+    bodyLarge = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         letterSpacing = (0.5).sp,
-        color = cmuWhite
     ),
-    body2 = TextStyle(
+    bodyMedium = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         letterSpacing = (0.25).sp,
-        color = cmuWhite
     ),
-    button = TextStyle(
+    bodySmall = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
-        color = cmuWhite
     ),
-    caption = TextStyle(
+    labelLarge = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
         letterSpacing = (0.4).sp,
-        color = cmuWhite
     ),
-    overline = TextStyle(
+    labelSmall = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
         fontSize = 10.sp,
         letterSpacing = (1.5).sp,
-        color = cmuWhite
     )
 )
 
 val LightTypography = Typography(
-    h1 = TextStyle(
+    displayLarge = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Light,
         fontSize = 96.sp,
         letterSpacing = (-1.5).sp,
-        color = cmuBlack
     ),
-    h2 = TextStyle(
+    displayMedium = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Light,
         fontSize = 60.sp,
         letterSpacing = (-0.5).sp,
-        color = cmuBlack
 
     ),
-    h3 = TextStyle(
+    displaySmall = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
         fontSize = 48.sp,
         letterSpacing = 0.sp,
-        color = cmuBlack
 
     ),
-    h4 = TextStyle(
+    headlineMedium = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
         fontSize = 34.sp,
         letterSpacing = (0.25).sp,
-        color = cmuBlack
     ),
-    h5 = TextStyle(
+    headlineSmall = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
         fontSize = 24.sp,
         letterSpacing = (0).sp,
-        color = cmuBlack
     ),
-    h6 = TextStyle(
+    titleLarge = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
         fontSize = 20.sp,
         letterSpacing = (0.15).sp,
-        color = cmuBlack
     ),
-    subtitle1 = TextStyle(
+    titleMedium = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         letterSpacing = (0.15).sp,
-        color = cmuBlack
     ),
-    subtitle2 = TextStyle(
+    titleSmall = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         letterSpacing = (0.1).sp,
-        color = cmuBlack
     ),
-    body1 = TextStyle(
+    bodyLarge = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
-        fontSize = 18.sp,
+        fontSize = 16.sp,
         letterSpacing = (0.5).sp,
-        color = cmuBlack
     ),
-    body2 = TextStyle(
+    bodyMedium = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         letterSpacing = (0.25).sp,
-        color = cmuBlack
     ),
-    button = TextStyle(
+    bodySmall = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
-        color = cmuBlack
     ),
-    caption = TextStyle(
+    labelLarge = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
         letterSpacing = (0.4).sp,
-        color = cmuBlack
     ),
-    overline = TextStyle(
+    labelSmall = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
         fontSize = 10.sp,
         letterSpacing = (1.5).sp,
-        color = cmuBlack
     )
 )

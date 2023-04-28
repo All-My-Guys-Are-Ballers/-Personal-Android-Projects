@@ -7,7 +7,7 @@
  *
  */
 
-package com.android.chatmeup.datastore
+package com.android.chatmeup.data.datastore
 
 import kotlinx.coroutines.flow.Flow
 
@@ -16,4 +16,7 @@ interface CmuDataStoreRepository {
 
     suspend fun saveLoginCredentials(state: String)
     suspend fun getLoginCredentials(): Flow<String>
+
+    suspend fun saveUserId(state: String)
+    suspend fun getUserId(): Flow<String>
 }

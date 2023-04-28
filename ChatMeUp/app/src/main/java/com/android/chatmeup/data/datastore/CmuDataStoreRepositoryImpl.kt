@@ -7,7 +7,7 @@
  *
  */
 
-package com.android.chatmeup.datastore
+package com.android.chatmeup.data.datastore
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -47,6 +47,26 @@ class CmuDataStoreRepositoryImpl @Inject constructor (
                 }
             }.map { preferences ->
                 preferences[CmuDataStorePreferenceKeys.LOGIN_CREDENTIALS] ?: ""
+            }
+    }
+
+    override suspend fun saveUserId(state: String) {
+        prefsDataStore.edit { preferences ->
+            preferences[CmuDataStorePreferenceKeys.USER_ID] = state
+        }
+    }
+
+    override suspend fun getUserId(): Flow<String> {
+        return prefsDataStore.data
+            .catch { exception ->
+                // dataStore.data throws an IOException when an error is encountered when reading data
+                if (exception is IOException) {
+                    emit(emptyPreferences())
+                } else {
+                    throw exception
+                }
+            }.map { preferences ->
+                preferences[CmuDataStorePreferenceKeys.USER_ID] ?: ""
             }
     }
 }

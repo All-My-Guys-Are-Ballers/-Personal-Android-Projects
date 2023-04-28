@@ -1,8 +1,6 @@
 package com.android.chatmeup.ui.screens.login
 
-import android.content.ContentValues.TAG
 import android.view.Gravity
-import android.view.View
 import android.view.WindowManager
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
@@ -37,11 +35,10 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.android.chatmeup.R
 import com.android.chatmeup.ui.theme.cmuBlue
-import com.android.chatmeup.ui.theme.cmuWhite
+import com.android.chatmeup.ui.theme.cmuOffWhite
 import com.togitech.ccp.component.*
 import com.togitech.ccp.data.utils.*
 import com.togitech.ccp.transformation.PhoneNumberTransformation
-import timber.log.Timber
 
 const val MAX_PHONE_NO_LENGTH: Int = 15
 private var fullNumberState: String by mutableStateOf("")
@@ -328,10 +325,10 @@ fun InputPhoneNoBottomSection(
                 InputPhoneNoEventState.INIT -> Text(
                     text = "Continue",
                     style = MaterialTheme.typography.body2,
-                    color = cmuWhite
+                    color = cmuOffWhite
                 )
                 InputPhoneNoEventState.LOADING -> {
-                    CircularProgressIndicator(color = cmuWhite, modifier = Modifier.padding(top = 2.dp, bottom = 2.dp), strokeWidth = 2.dp)
+                    CircularProgressIndicator(color = cmuOffWhite, modifier = Modifier.padding(top = 2.dp, bottom = 2.dp), strokeWidth = 2.dp)
                 }
                 InputPhoneNoEventState.DONE -> {
                     Icon(

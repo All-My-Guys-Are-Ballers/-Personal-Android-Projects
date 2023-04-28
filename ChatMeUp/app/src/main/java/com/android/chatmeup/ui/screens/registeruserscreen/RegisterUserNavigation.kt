@@ -4,7 +4,7 @@ import android.app.Activity
 import android.content.Context
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
-import com.android.chatmeup.datastore.CmuDataStoreRepository
+import com.android.chatmeup.data.datastore.CmuDataStoreRepository
 import com.android.chatmeup.navigation.CmuNavigationDestination
 
 object RegisterUserDestination : CmuNavigationDestination {

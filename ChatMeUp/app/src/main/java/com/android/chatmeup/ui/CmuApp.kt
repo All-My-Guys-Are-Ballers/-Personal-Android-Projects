@@ -5,9 +5,12 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import com.android.chatmeup.CmuApplication
-import com.android.chatmeup.datastore.CmuDataStoreRepository
+import com.android.chatmeup.data.datastore.CmuDataStoreRepository
 import com.android.chatmeup.navigation.CmuNavHost
+import com.android.chatmeup.ui.screens.homescreen.HomeDestination
 import com.android.chatmeup.ui.screens.loginscreen.LoginDestination
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 
 @Composable
 fun CmuApp(
@@ -30,6 +33,6 @@ fun CmuApp(
         navController = appState.navController,
         onBackClick = appState::navigateBack,
         onNavigateToDestination = appState::navigate,
-        startDestination = LoginDestination.route
+        startDestination = if(Firebase.auth.currentUser == null)LoginDestination.route else HomeDestination.route
     )
 }

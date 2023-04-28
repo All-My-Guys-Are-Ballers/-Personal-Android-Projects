@@ -16,11 +16,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.chatmeup.R
 import com.android.chatmeup.ui.theme.cmuBlue
-import com.android.chatmeup.ui.theme.cmuWhite
+import com.android.chatmeup.ui.theme.cmuOffWhite
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
@@ -153,7 +152,7 @@ fun BottomSection(
         ) {
             Text(text = "Start Messaging",
                 style = MaterialTheme.typography.button,
-                color = cmuWhite
+                color = cmuOffWhite
             )
         }
     }

@@ -2,31 +2,35 @@ package com.android.chatmeup.ui.screens.loginscreen
 
 import android.app.Activity
 import android.content.Context
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.android.chatmeup.datastore.CmuDataStoreRepository
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
+import com.android.chatmeup.ui.screens.components.CmuDarkButton
 import com.android.chatmeup.ui.screens.components.CmuInputTextField
-import com.android.chatmeup.ui.theme.cmuBlue
-import com.android.chatmeup.ui.theme.cmuWhite
+import com.android.chatmeup.ui.screens.components.Logo
+import com.android.chatmeup.ui.theme.*
 import com.android.chatmeup.util.isEmailValid
 import com.android.chatmeup.util.isStrongPassword
+import com.google.accompanist.insets.navigationBarsWithImePadding
 
+@OptIn(ExperimentalTextApi::class)
 @Composable
 fun LoginScreen(
     context: Context,
@@ -65,21 +69,16 @@ fun LoginScreen(
 
     Scaffold(modifier = Modifier.fillMaxSize()) { it ->
         Column(modifier = Modifier
+            .verticalScroll(rememberScrollState())
+            .navigationBarsWithImePadding()
             .padding(it)
             .fillMaxSize()) {
             Spacer(modifier = Modifier.height(30.dp))
-            Text(text = "ChatMeUp",
-                style = MaterialTheme.typography.h3,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 25.dp, end = 25.dp),
-                textAlign = TextAlign.Start,
-                color = cmuBlue
-            )
+            Logo()
             Spacer(modifier = Modifier.height(50.dp))
             Text(
                 text = "Welcome Back",
-                style = MaterialTheme.typography.h4,
+                style = MaterialTheme.typography.headlineMedium,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 25.dp, end = 25.dp),
@@ -88,7 +87,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(5.dp))
             Text(
                 text = "Login to your account. Share long lasting memories",
-                style = MaterialTheme.typography.button,
+                style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 25.dp, end = 25.dp),
@@ -96,9 +95,9 @@ fun LoginScreen(
             )
             Spacer(modifier = Modifier.height(10.dp))
             CmuInputTextField(
+                modifier = Modifier,
                 label = "Email",
                 placeholder = "Enter your email address",
-                modifier = Modifier,
                 text = email,
                 imeAction = ImeAction.Next,
                 onValueChanged = {value ->
@@ -107,12 +106,16 @@ fun LoginScreen(
                 },
             )
             CmuInputTextField(
-                label = "Password",
                 modifier = Modifier,
+                label = "Password",
                 placeholder = "Enter your password",
                 keyboardType = KeyboardType.Password,
                 text = password,
                 imeAction = ImeAction.Done,
+                onValueChanged = {value ->
+                    password.value = value
+                    isStrongPassword.value = isStrongPassword(password.value.text)
+                },
                 trailingIcon = {
                     Icon(imageVector = if(isPasswordVisible.value) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
                         contentDescription = "Password visibility",
@@ -122,27 +125,23 @@ fun LoginScreen(
                     )
             },
                 visualTransformation = if(isPasswordVisible.value) VisualTransformation.None else PasswordVisualTransformation(),
-                onValueChanged = {value ->
-                    password.value = value
-                    isStrongPassword.value = isStrongPassword(password.value.text)
-                },
             )
             
             Spacer(modifier = Modifier.height(30.dp))
 
             //TODO Forgot Password and Remember me
 
-            Button(modifier = Modifier
-                .padding(start = 80.dp, end = 80.dp)
-                .height(50.dp)
-                .fillMaxWidth(),
+            CmuDarkButton(
+                label = "Login",
+                isLoading = loginViewState == LoginStatus.LOADING,
                 onClick = {
                     if (isEmailValid.value) loginScreenViewModel.onEventTriggered(
                         activity,
                         context,
                         LoginScreenViewModel.LoginEvents.LoadingEvent,
                         email = email.value.text,
-                        password = password.value.text
+                        password = password.value.text,
+                        onLoggedIn
                     )
                     else {CmuToast.createFancyToast(
                         context = context,
@@ -152,61 +151,30 @@ fun LoginScreen(
                         style = CmuToastStyle.ERROR,
                         duration = CmuToastDuration.SHORT
                     )}
-                },elevation =  ButtonDefaults.elevation(
-                    defaultElevation = 0.dp,
-                    pressedElevation = 5.dp,
-                    disabledElevation = 0.dp
-                ), colors = ButtonDefaults.buttonColors(backgroundColor = cmuBlue),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                if (loginViewState == LoginStatus.LOADING){
-                    CircularProgressIndicator(
-                        color = cmuWhite,
-                        modifier = Modifier.align(Alignment.CenterVertically),
-                        strokeWidth = 2.dp
-                    )
                 }
-                else{
-                    Text(
-                        text = "Login",
-                        style = MaterialTheme.typography.button,
-                        color = cmuWhite
-                    )
-                }
-            }
-
-//            Spacer(modifier = Modifier.height(5.dp))
+            )
             Text(
                 text = "or",
                 textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.button,
+                style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(5.dp)
             )
-//            Spacer(modifier = Modifier.height(5.dp))
-            Button(modifier = Modifier
-                .padding(bottom = 20.dp, start = 80.dp, end = 80.dp)
-                .height(50.dp)
-                .fillMaxWidth()
-                ,
+            CmuDarkButton(
+                label = "Sign in with Google",
+                isLoading = false, //TODO
                 onClick = {
-                    //TODO onClickSignInWithGoogle()
-                    //your onclick code here
-                },elevation =  ButtonDefaults.elevation(
-                    defaultElevation = 0.dp,
-                    pressedElevation = 5.dp,
-                    disabledElevation = 0.dp
-                ), colors = ButtonDefaults.buttonColors(backgroundColor = cmuWhite),
-                shape = RoundedCornerShape(10.dp),
-                border = BorderStroke(width = 2.dp, color = cmuBlue)
-            ) {
-//                Icon(painter = painterResource(id = R.drawable.ic_google_logo), contentDescription = "Google logo")
-                Text(text = "Sign in with Google",
-                    style = MaterialTheme.typography.button,
-                    color = cmuBlue
-                )
-            }
+                    CmuToast.createFancyToast(
+                        context,
+                        activity,
+                        "N/A",
+                        "This feature has not been implemented yet",
+                        CmuToastStyle.INFO,
+                        CmuToastDuration.SHORT
+                    )
+                }
+            )
             Row(modifier = Modifier
                 .fillMaxWidth()
                 .padding(5.dp)
@@ -216,16 +184,17 @@ fun LoginScreen(
                 Text(
                     text = "Don't have an account? ",
 //                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.button,
+                    style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier
                 )
                 Text(
                     text = "Register" ,
-                    style = MaterialTheme.typography.button,
+                    style = MaterialTheme.typography.labelLarge,
                     color = cmuBlue,
                     modifier = Modifier.clickable {
                         onClickRegister()
-                    }
+                    },
+                    textDecoration = TextDecoration.Underline
                 )
             }
         }

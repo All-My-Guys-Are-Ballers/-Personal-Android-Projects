@@ -7,20 +7,17 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
-import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.navigation.compose.rememberNavController
-import com.android.chatmeup.datastore.CmuDataStoreRepository
-import com.android.chatmeup.ui.screens.homescreen.HomeScreen
+import com.android.chatmeup.data.datastore.CmuDataStoreRepository
+import com.android.chatmeup.ui.CmuApp
 import com.android.chatmeup.ui.theme.ChatMeUpTheme
-import com.android.chatmeup.ui.theme.cmuBlack
-import com.android.chatmeup.ui.theme.cmuWhite
+import com.android.chatmeup.ui.theme.cmuDarkBlue
+import com.android.chatmeup.ui.theme.cmuOffWhite
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
@@ -38,10 +35,11 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var cmuDataStoreRepository: CmuDataStoreRepository
+
 //    @EntryPoint
 //    @InstallIn(ActivityComponent::class)
 //    interface ViewModelFactoryProvider {
-//        fun loginScreenViewModelFactory(): LoginScreenViewModel.Factory
+//        fun homeViewModelFactory(): HomeViewModel.Factory
 //    }
     override fun onCreate(savedInstanceState: Bundle?) {
 //        WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -55,7 +53,7 @@ class MainActivity : ComponentActivity() {
             val isDarkTheme = isSystemInDarkTheme()
             LaunchedEffect(isSystemInDarkTheme()) {
                 systemUiController.setStatusBarColor(
-                    color = if(isDarkTheme) cmuBlack else cmuWhite,
+                    color = if(isDarkTheme) cmuDarkBlue else cmuOffWhite,
                     darkIcons = false
                 )
             }
@@ -71,13 +69,13 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colors.background
                 ) {
-                    HomeScreen(context = applicationContext, activity = chatMeUpApp.getCurrentActivity() )
-//                    CmuApp(
-//                        context = applicationContext,
-//                        activity = this,
-//                        navController = navController,
-//                        chatMeUpApp = chatMeUpApp
-//                    )
+//                    HomeScreen(context = applicationContext, activity = chatMeUpApp.getCurrentActivity() )
+                    CmuApp(
+                        context = applicationContext,
+                        activity = this,
+                        navController = navController,
+                        chatMeUpApp = chatMeUpApp,
+                    )
                 }
             }
         }
@@ -90,18 +88,5 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         chatMeUpApp.setCurrentActivity(this)
-    }
-}
-
-@Composable
-fun Greeting(name: String) {
-    Text(text = "Hello $name!")
-}
-
-@Preview(showBackground = true)
-@Composable
-fun DefaultPreview() {
-    ChatMeUpTheme {
-        Greeting("Android")
     }
 }
