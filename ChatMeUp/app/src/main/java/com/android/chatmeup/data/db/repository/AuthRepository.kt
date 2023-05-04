@@ -4,7 +4,7 @@ import com.fredrikbogg.android_chat_app.data.model.CreateUser
 import com.fredrikbogg.android_chat_app.data.model.Login
 import com.android.chatmeup.data.db.remote.FirebaseAuthSource
 import com.android.chatmeup.data.db.remote.FirebaseAuthStateObserver
-import com.fredrikbogg.android_chat_app.data.Result
+import com.android.chatmeup.data.Result
 import com.google.firebase.auth.FirebaseUser
 
 class AuthRepository{

@@ -5,7 +5,6 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import androidx.annotation.WorkerThread
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
 import com.android.chatmeup.data.db.repository.AuthRepository
@@ -13,19 +12,15 @@ import com.android.chatmeup.ui.DefaultViewModel
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
-import com.android.chatmeup.ui.screens.loginscreen.LoginScreenViewModel
-import com.android.chatmeup.ui.screens.loginscreen.LoginStatus
-import com.fredrikbogg.android_chat_app.data.Result
+import com.android.chatmeup.data.Result
+import com.android.chatmeup.data.db.entity.User
+import com.android.chatmeup.data.db.repository.DatabaseRepository
 import com.fredrikbogg.android_chat_app.data.model.CreateUser
-import com.fredrikbogg.android_chat_app.data.model.Login
 import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import javax.inject.Inject
 
 enum class RegisterUserStatus{
@@ -41,6 +36,8 @@ class RegisterUserScreenViewModel @Inject constructor(cmuDataStoreRepository: Cm
     private val tag: String = "RegisterUserScreenViewModel"
     val registerUserEventStatus = MutableStateFlow(RegisterUserStatus.INIT)
     private val authRepository = AuthRepository()
+    private val dbRepository = DatabaseRepository()
+
 
     init {
         this.cmuDataStoreRepository = cmuDataStoreRepository
@@ -52,7 +49,8 @@ class RegisterUserScreenViewModel @Inject constructor(cmuDataStoreRepository: Cm
         event: RegisterUserEvents,
         email: String = "",
         password: String = "",
-        onRegisterUser: () -> Unit = {}
+        displayName: String = "",
+        onRegisterUser: () -> Unit = {},
     ){
         when(event){
             RegisterUserEvents.InitRegisterUserEvent -> {
@@ -61,6 +59,7 @@ class RegisterUserScreenViewModel @Inject constructor(cmuDataStoreRepository: Cm
             RegisterUserEvents.LoadingEvent -> {
                 registerUserEventStatus.value = RegisterUserStatus.LOADING
                 createUser(
+                    displayName = displayName,
                     email = email,
                     password = password,
                     activity = activity,
@@ -76,7 +75,7 @@ class RegisterUserScreenViewModel @Inject constructor(cmuDataStoreRepository: Cm
                         activity,
                         "Register User",
                         "Account Created, Proceed to Login Page",
-                        CmuToastStyle.ERROR,
+                        CmuToastStyle.SUCCESS,
                         CmuToastDuration.SHORT
                     )
                 }, 200)
@@ -94,29 +93,35 @@ class RegisterUserScreenViewModel @Inject constructor(cmuDataStoreRepository: Cm
                     )
                 }, 200)
                 onEventTriggered(
-                    activity, context, RegisterUserEvents.InitRegisterUserEvent
+                    activity, context, RegisterUserEvents.InitRegisterUserEvent,
                 )
             }
         }
     }
 
     private fun createUser(
+        displayName: String,
         email: String,
         password: String,
         activity: Activity?,
         context: Context,
         onRegisterUser: () -> Unit
     ) {
-        val createUser = CreateUser(email, password)
+        val createUser = CreateUser(displayName,email, password)
 
         authRepository.createUser(createUser) { result: Result<FirebaseUser> ->
             onResult(null, result)
             if (result is Result.Success) {
+                dbRepository.updateNewUser(User().apply {
+                    info.id = result.data?.uid.toString()
+                    info.displayName = createUser.displayName
+                    info.email = createUser.email
+                })
                 onEventTriggered(
                     activity = activity,
                     context = context,
                     event = RegisterUserEvents.DoneEvent,
-                    onRegisterUser = onRegisterUser
+                    onRegisterUser = onRegisterUser,
                 )
             }
             else if (result is Result.Error) {
@@ -124,7 +129,7 @@ class RegisterUserScreenViewModel @Inject constructor(cmuDataStoreRepository: Cm
                     activity = activity,
                     context = context,
                     event = RegisterUserEvents.ErrorEvent,
-                    onRegisterUser = onRegisterUser
+                    onRegisterUser = onRegisterUser,
                 )
             }
             else {

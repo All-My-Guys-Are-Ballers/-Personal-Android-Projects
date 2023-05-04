@@ -3,7 +3,7 @@ package com.android.chatmeup.data.db.remote
 import com.android.chatmeup.data.db.entity.*
 import com.android.chatmeup.util.wrapSnapshotToArrayList
 import com.android.chatmeup.util.wrapSnapshotToClass
-import com.fredrikbogg.android_chat_app.data.Result
+import com.android.chatmeup.data.Result
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.TaskCompletionSource
 import com.google.firebase.database.*

@@ -15,3 +15,11 @@ fun isStrongPassword(password: String): Boolean {
 
     return password.length >= minLength && hasUppercase && hasLowercase && hasDigit && hasSpecialChar
 }
+
+fun isName(s: String): Int {
+    return if (!s.all { it.isLetter() }) {  // check if string contains only letters
+        -1
+    } else if (s.length < 2) {  // check if string is too short to be a name
+        -2
+    } else 0
+}

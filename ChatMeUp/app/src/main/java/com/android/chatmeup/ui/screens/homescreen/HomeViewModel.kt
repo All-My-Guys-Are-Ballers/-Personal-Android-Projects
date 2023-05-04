@@ -3,7 +3,6 @@ package com.android.chatmeup.ui.screens.homescreen
 import android.app.Activity
 import androidx.annotation.WorkerThread
 import androidx.lifecycle.*
-import androidx.lifecycle.viewmodel.CreationExtras
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
 import com.android.chatmeup.data.db.entity.Chat
 import com.android.chatmeup.data.db.entity.UserFriend
@@ -11,14 +10,11 @@ import com.android.chatmeup.data.db.entity.UserInfo
 import com.android.chatmeup.data.db.remote.FirebaseReferenceValueObserver
 import com.android.chatmeup.data.db.repository.DatabaseRepository
 import com.android.chatmeup.ui.DefaultViewModel
-import com.android.chatmeup.ui.screens.loginscreen.LoginStatus
 import com.android.chatmeup.util.addNewItem
 import com.android.chatmeup.util.convertTwoUserIDs
 import com.android.chatmeup.util.updateItemAt
-import com.fredrikbogg.android_chat_app.data.Result
+import com.android.chatmeup.data.Result
 import com.fredrikbogg.android_chat_app.data.model.ChatWithUserInfo
-import dagger.assisted.Assisted
-import dagger.assisted.AssistedFactory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

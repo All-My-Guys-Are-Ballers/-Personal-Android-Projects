@@ -6,7 +6,7 @@ import com.android.chatmeup.util.wrapSnapshotToClass
 import com.android.chatmeup.data.db.remote.FirebaseDataSource
 import com.android.chatmeup.data.db.remote.FirebaseReferenceChildObserver
 import com.android.chatmeup.data.db.remote.FirebaseReferenceValueObserver
-import com.fredrikbogg.android_chat_app.data.Result
+import com.android.chatmeup.data.Result
 
 
 class DatabaseRepository {

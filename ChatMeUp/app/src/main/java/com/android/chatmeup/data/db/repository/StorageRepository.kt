@@ -2,7 +2,7 @@ package com.android.chatmeup.data.db.repository
 
 import android.net.Uri
 import com.android.chatmeup.data.db.remote.FirebaseStorageSource
-import com.fredrikbogg.android_chat_app.data.Result
+import com.android.chatmeup.data.Result
 
 class StorageRepository {
     private val firebaseStorageService = FirebaseStorageSource()

@@ -4,7 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.android.chatmeup.data.Event
-import com.fredrikbogg.android_chat_app.data.Result
+import com.android.chatmeup.data.Result
 
 abstract class DefaultViewModel : ViewModel() {
     protected val mSnackBarText = MutableLiveData<Event<String>>()

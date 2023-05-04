@@ -2,7 +2,7 @@ package com.android.chatmeup.data.db.remote
 
 import com.fredrikbogg.android_chat_app.data.model.CreateUser
 import com.fredrikbogg.android_chat_app.data.model.Login
-import com.fredrikbogg.android_chat_app.data.Result
+import com.android.chatmeup.data.Result
 import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth

@@ -42,6 +42,10 @@ fun RegisterUserScreen(
         mutableStateOf(TextFieldValue(""))
     }
 
+    val displayName: MutableState<TextFieldValue> = remember {
+        mutableStateOf(TextFieldValue(""))
+    }
+
     val password: MutableState<TextFieldValue> = remember {
         mutableStateOf(TextFieldValue(""))
     }
@@ -51,6 +55,10 @@ fun RegisterUserScreen(
     }
 
     val isEmailValid: MutableState<Boolean> = remember {
+        mutableStateOf(false)
+    }
+
+    val isDisplayNameValid: MutableState<Boolean> = remember {
         mutableStateOf(false)
     }
 
@@ -91,6 +99,17 @@ fun RegisterUserScreen(
                 textAlign = TextAlign.Start
             )
             Spacer(modifier = Modifier.height(10.dp))
+            CmuInputTextField(
+                modifier = Modifier,
+                label = "Display Name",
+                placeholder = "Enter your Display Name",
+                text = displayName,
+                imeAction = ImeAction.Next,
+                onValueChanged = { value ->
+                    displayName.value = value
+//                    isDisplayNameValid.value = isName(displayName.value)
+                },
+            )
             CmuInputTextField(
                 modifier = Modifier,
                 label = "Email",
@@ -189,16 +208,18 @@ fun RegisterUserScreen(
                             style = CmuToastStyle.ERROR,
                             duration = CmuToastDuration.SHORT
                         )
-                    } else if (!isStrongPassword.value) {
-                        CmuToast.createFancyToast(
-                            context = context,
-                            activity = activity,
-                            title = "Sign Up",
-                            message = "Password too weak. Make sure to use special characters and numbers",
-                            style = CmuToastStyle.ERROR,
-                            duration = CmuToastDuration.LONG
-                        )
-                    } else if (password.value != confirmPassword.value) {
+                    }
+//                    else if (!isStrongPassword.value) {
+//                        CmuToast.createFancyToast(
+//                            context = context,
+//                            activity = activity,
+//                            title = "Sign Up",
+//                            message = "Password too weak. Make sure to use special characters and numbers",
+//                            style = CmuToastStyle.ERROR,
+//                            duration = CmuToastDuration.LONG
+//                        )
+//                    }
+                else if (password.value != confirmPassword.value) {
                         CmuToast.createFancyToast(
                             context = context,
                             activity = activity,
@@ -213,7 +234,9 @@ fun RegisterUserScreen(
                             context,
                             RegisterUserScreenViewModel.RegisterUserEvents.LoadingEvent,
                             email = email.value.text,
-                            password = password.value.text
+                            password = password.value.text,
+                            displayName = displayName.value.text,
+                            onRegisterUser = onBackClick
                         )
                     }
                 }

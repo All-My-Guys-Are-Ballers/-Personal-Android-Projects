@@ -1,4 +1,4 @@
-package com.fredrikbogg.android_chat_app.data
+package com.android.chatmeup.data
 
 
 sealed class Result<out R> {
