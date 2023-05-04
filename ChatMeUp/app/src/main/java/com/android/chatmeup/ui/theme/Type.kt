@@ -46,7 +46,7 @@ val DarkTypography = Typography(
     headlineSmall = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
-        fontSize = 30.sp,
+        fontSize = 24.sp,
         letterSpacing = (0).sp,
     ),
     titleLarge = TextStyle(
@@ -64,7 +64,7 @@ val DarkTypography = Typography(
     titleSmall = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
+        fontSize = 14.sp,
         letterSpacing = (0.1).sp,
     ),
     bodyLarge = TextStyle(
@@ -76,7 +76,7 @@ val DarkTypography = Typography(
     bodyMedium = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
+        fontSize = 14.sp,
         letterSpacing = (0.25).sp,
     ),
     bodySmall = TextStyle(
@@ -111,14 +111,14 @@ val LightTypography = Typography(
         fontSize = 60.sp,
         letterSpacing = (-0.5).sp,
 
-    ),
+        ),
     displaySmall = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
         fontSize = 48.sp,
         letterSpacing = 0.sp,
 
-    ),
+        ),
     headlineMedium = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
@@ -146,7 +146,7 @@ val LightTypography = Typography(
     titleSmall = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
+        fontSize = 14.sp,
         letterSpacing = (0.1).sp,
     ),
     bodyLarge = TextStyle(
@@ -158,7 +158,7 @@ val LightTypography = Typography(
     bodyMedium = TextStyle(
         fontFamily = Inter,
         fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
+        fontSize = 14.sp,
         letterSpacing = (0.25).sp,
     ),
     bodySmall = TextStyle(

@@ -52,7 +52,7 @@ fun CmuInputTextField(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = 16.dp, start = 25.dp, end = 25.dp),
+            .padding(top = 16.dp, start = 30.dp, end = 30.dp),
     ) {
         if(label.isNotBlank()){
             Text(
