@@ -1,5 +1,7 @@
 package com.android.chatmeup.ui.screens.components
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -25,6 +28,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.android.chatmeup.ui.theme.neutral_disabled
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -73,7 +77,7 @@ fun CmuInputTextField(
             placeholder = {
                 Text(
                     text = placeholder,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    color = neutral_disabled,
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -94,11 +98,11 @@ fun CmuInputTextField(
             ),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = MaterialTheme.colorScheme.inverseOnSurface,
-                focusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                unfocusedBorderColor = Color.Transparent,
+                focusedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                unfocusedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
                 selectionColors = TextSelectionColors(
-                    backgroundColor = MaterialTheme.colorScheme.outline,
+                    backgroundColor = neutral_disabled,
                     handleColor = MaterialTheme.colorScheme.primaryContainer
                 )
             )
