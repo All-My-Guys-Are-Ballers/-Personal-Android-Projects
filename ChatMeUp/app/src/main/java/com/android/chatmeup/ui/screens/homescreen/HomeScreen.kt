@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import androidx.compose.animation.*
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -19,19 +18,18 @@ import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.rounded.Circle
+import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -40,14 +38,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.android.chatmeup.R
+import com.android.chatmeup.data.db.entity.UserInfo
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
 import com.android.chatmeup.ui.screens.components.CmuDarkButton
 import com.android.chatmeup.ui.screens.components.CmuInputTextField
+import com.android.chatmeup.ui.screens.components.ProfilePicture
 import com.android.chatmeup.ui.theme.brand_color
 import com.android.chatmeup.ui.theme.cmuDarkBlue
 import com.android.chatmeup.ui.theme.cmuOffWhite
+import com.android.chatmeup.ui.theme.md_theme_dark_onPrimaryContainer
 import com.android.chatmeup.ui.theme.neutral_disabled
 import com.android.chatmeup.ui.theme.seed
 import com.android.chatmeup.ui.theme.success_green
@@ -57,7 +58,7 @@ import com.google.accompanist.pager.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalPagerApi::class, ExperimentalMaterialApi::class)
+@OptIn(ExperimentalPagerApi::class, ExperimentalMaterialApi::class, ExperimentalComposeUiApi::class)
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
 fun HomeScreen(
@@ -67,6 +68,8 @@ fun HomeScreen(
 ){
     val chatsList by viewModel.chatsList.observeAsState()
 
+    val notificationsList by viewModel.notificationListwithUserInfo.observeAsState()
+
     val addContactEventState by viewModel.addContactEventState.collectAsState()
 
     var searchText = remember { mutableStateOf(TextFieldValue("")) }
@@ -75,10 +78,10 @@ fun HomeScreen(
 
     val scope = rememberCoroutineScope()
 
-    val modalBottomSheetState = androidx.compose.material.rememberModalBottomSheetState(
-        initialValue = ModalBottomSheetValue.Hidden,
-        confirmStateChange = { it != ModalBottomSheetValue.HalfExpanded }
-    )
+    val modalBottomSheetState =
+        rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden,
+            confirmValueChange = { it != ModalBottomSheetValue.HalfExpanded }
+        )
 
     var currentBottomSheet: BottomSheetScreen by remember{
         mutableStateOf(BottomSheetScreen.AddContact)
@@ -88,13 +91,22 @@ fun HomeScreen(
         mutableStateOf(TextFieldValue(""))
     }
 
+    LaunchedEffect(notificationsList){
+        if(notificationsList.isNullOrEmpty()){
+            scope.launch{ modalBottomSheetState.hide() }
+        }
+    }
+
     ModalBottomSheetLayout(
         sheetState = modalBottomSheetState,
+        sheetBackgroundColor = MaterialTheme.colorScheme.background,
         sheetContent = {
             SheetLayout(
                 currentScreen = currentBottomSheet,
                 context = context,
                 activity = activity,
+                notificationsList = notificationsList as List<UserInfo>?,
+                viewModel = viewModel,
                 onAddContactClicked =
                 {
                     viewModel.onAddContactEventTriggered(
@@ -106,11 +118,15 @@ fun HomeScreen(
                     )
                 },
                 newContactEmail = newContactEmail,
+                onNewContactEmailChanged = {newContactEmail.value = it},
                 addContactEventState = addContactEventState,
-                onNewContactEmailChanged = {newContactEmail.value = it}
             )
         }
     ){
+        val keyboardController = LocalSoftwareKeyboardController.current
+        if(!modalBottomSheetState.isVisible){
+            keyboardController?.hide()
+        }
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
@@ -148,6 +164,24 @@ fun HomeScreen(
                                         imageVector = ImageVector.vectorResource(id = R.drawable.ic_new_chat),
                                         contentDescription = "icon.name",
                                     )
+                                }
+                            },
+                            {
+                                if (!notificationsList.isNullOrEmpty()){
+                                    IconButton(
+                                        onClick = {
+                                            currentBottomSheet = BottomSheetScreen.RequestsList
+                                            scope.launch {
+                                                modalBottomSheetState.show()
+                                            }
+                                        }
+                                    ) {
+                                        Icon(
+                                            modifier = Modifier.size(20.dp),
+                                            imageVector = Icons.Default.NotificationsActive,
+                                            contentDescription = "icon.name",
+                                        )
+                                    }
                                 }
                             }
                         )
@@ -222,7 +256,6 @@ fun ChatList(list: MutableList<ChatWithUserInfo>?){
             item {
                 ChatListItem(item = null)
             }
-
         }
     }
 }
@@ -234,41 +267,11 @@ fun ChatListItem(
     item: ChatWithUserInfo?
 ){
     Row(modifier = modifier) {
-        BadgedBox(
-            modifier = Modifier
-                .size(60.dp),
-//                .clip(RoundedCornerShape(30))
-//                    .clipToBounds()
-            badge = {
-                Card(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .offset(x = (-10).dp, y = (10).dp),
-                    shape = CircleShape,
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.background
-                    )
-                ){
-                    Icon(
-                        modifier = Modifier
-//                        .align(Alignment.TopEnd)
-                            .padding(2.dp),
-                        imageVector = Icons.Default.Circle,
-                        contentDescription = null,
-                        tint = success_green
-                    )
-                }
-            },
-        ){
-            Image(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(30))
-                    .fillMaxSize(),
-                contentScale = ContentScale.Crop,
-                painter = painterResource(id = R.drawable.fine_lady_profile_pic),
-                contentDescription = "Profile picture"
-            )
-        }
+        ProfilePicture(
+            imageId = R.drawable.fine_lady_profile_pic,
+            isOnline = true,
+            size = 60.dp
+        )
         Spacer(modifier = Modifier.width(20.dp))
         Column(Modifier.weight(1f)) {
             Text(
@@ -473,6 +476,71 @@ fun BottomBarItem(
 }
 
 @Composable
+fun RequestsList(
+    viewModel: HomeViewModel,
+    notificationsList: List<UserInfo>
+){
+    LazyColumn(
+        modifier = Modifier
+            .padding(25.dp)
+            .fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(25.dp)
+    ){
+        repeat(notificationsList.size){
+            item {
+                Row() {
+                    ProfilePicture(
+                        imageId = R.drawable.fine_lady_profile_pic,
+                        isOnline = true,
+                        size = 90.dp
+                    )
+                    Spacer(modifier = Modifier.width(20.dp))
+                    Column(modifier = Modifier.weight(1f)){
+                        Text(
+                            text = notificationsList[it].displayName,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        Spacer(modifier = Modifier.height(15.dp))
+                        Row(modifier = Modifier){
+                            Button(
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = seed
+                                ),
+                                onClick = {
+                                    viewModel.acceptNotificationPressed(notificationsList[it])
+                                }
+                            ) {
+                                Text(
+                                    text = "Confirm",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = md_theme_dark_onPrimaryContainer,
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(20.dp))
+                            Button(
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                                ),
+                                onClick = {
+                                    viewModel.declineNotificationPressed(notificationsList[it])
+                                }
+                            ) {
+                                Text(
+                                    text = "Delete",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun AddContactDialog(
     context: Context,
     activity: Activity?,
@@ -481,7 +549,7 @@ fun AddContactDialog(
     onAddContactClicked: () -> Unit,
     addContactEventState: AddContactEventState,
 ) {
-    Column() {
+    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         CmuInputTextField(
             label = "",
             placeholder = "Contact Email",
@@ -489,6 +557,7 @@ fun AddContactDialog(
             onValueChanged = onNewContactEmailChanged
         )
         CmuDarkButton(
+            modifier = Modifier.padding(bottom = 20.dp),
             label = "Add New Contact",
             padding = PaddingValues(start = 30.dp, end =  30.dp),
             isLoading = addContactEventState == AddContactEventState.LOADING,
@@ -517,10 +586,12 @@ fun SheetLayout(
     currentScreen: BottomSheetScreen,
     context: Context,
     activity: Activity?,
+    addContactEventState: AddContactEventState,
+    viewModel: HomeViewModel,
+    notificationsList: List<UserInfo>?,
     onAddContactClicked: () -> Unit,
     newContactEmail: MutableState<TextFieldValue>,
     onNewContactEmailChanged: (TextFieldValue) -> Unit,
-    addContactEventState: AddContactEventState,
 ) {
     when(currentScreen){
         BottomSheetScreen.AddContact -> {
@@ -533,10 +604,20 @@ fun SheetLayout(
                 onAddContactClicked = onAddContactClicked
             )
         }
+
+        BottomSheetScreen.RequestsList -> {
+            if (notificationsList != null) {
+                RequestsList(
+                    viewModel = viewModel,
+                    notificationsList = notificationsList
+                )
+            }
+        }
     }
 }
 
 
 sealed class BottomSheetScreen {
     object AddContact: BottomSheetScreen()
+    object RequestsList: BottomSheetScreen()
 }

@@ -17,12 +17,13 @@ import com.android.chatmeup.util.addNewItem
 import com.android.chatmeup.util.convertTwoUserIDs
 import com.android.chatmeup.util.updateItemAt
 import com.android.chatmeup.data.Result
+import com.android.chatmeup.data.db.entity.Message
 import com.android.chatmeup.data.db.entity.User
 import com.android.chatmeup.data.db.entity.UserNotification
-import com.android.chatmeup.data.db.entity.UserRequest
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
+import com.android.chatmeup.util.removeItem
 import com.fredrikbogg.android_chat_app.data.model.ChatWithUserInfo
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
@@ -31,7 +32,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -59,11 +59,14 @@ class HomeViewModel @Inject constructor(cmuDataStoreRepository: CmuDataStoreRepo
     private var cmuDataStoreRepository: CmuDataStoreRepository? = null
     private val dbRepository: DatabaseRepository = DatabaseRepository()
     private val firebaseReferenceObserverList = ArrayList<FirebaseReferenceValueObserver>()
+
+    private val _updatedUserNotification = MutableLiveData<UserInfo>()
     private val _updatedChatWithUserInfo = MutableLiveData<ChatWithUserInfo>()
 
     private var myUserId: String = ""
 
     val chatsList = MediatorLiveData<MutableList<ChatWithUserInfo>>()
+    val notificationListwithUserInfo = MediatorLiveData<MutableList<UserInfo>>()
 
     init {
         this.cmuDataStoreRepository = cmuDataStoreRepository
@@ -76,7 +79,11 @@ class HomeViewModel @Inject constructor(cmuDataStoreRepository: CmuDataStoreRepo
                 chatsList.updateItemAt(newChat, chatsList.value!!.indexOf(chat))
             }
         }
+        this.notificationListwithUserInfo.addSource(_updatedUserNotification){ newNotification ->
+            this.notificationListwithUserInfo.addNewItem(newNotification)
+        }
         setupChats()
+        loadAndObserveNotifications()
     }
 
     @WorkerThread
@@ -101,10 +108,46 @@ class HomeViewModel @Inject constructor(cmuDataStoreRepository: CmuDataStoreRepo
         }
     }
 
+    private fun updateNotification(otherUserInfo: UserInfo, removeOnly: Boolean) {
+        val userNotification = this.notificationListwithUserInfo.value?.find {
+            it.id == otherUserInfo.id
+        }
+
+        if (userNotification != null) {
+            if (!removeOnly) {
+                dbRepository.updateNewFriend(UserFriend(myUserId), UserFriend(otherUserInfo.id))
+                val newChat = Chat().apply {
+                    info.id = convertTwoUserIDs(myUserId, otherUserInfo.id)
+                    lastMessage = Message(senderID = myUserId, seen = false, text = "Say hello!")
+                }
+                dbRepository.updateNewChat(newChat)
+            }
+            dbRepository.removeNotification(myUserId, otherUserInfo.id)
+            dbRepository.removeSentRequest(otherUserInfo.id, myUserId)
+
+//            usersInfoList.removeItem(otherUserInfo)
+            this.notificationListwithUserInfo.removeItem(userNotification)
+        }
+    }
+
+    fun acceptNotificationPressed(userInfo: UserInfo) {
+        updateNotification(userInfo, false)
+    }
+
+    fun declineNotificationPressed(userInfo: UserInfo) {
+        updateNotification(userInfo, true)
+    }
+
     private fun loadUserInfo(userFriend: UserFriend) {
         dbRepository.loadUserInfo(userFriend.userID) { result: Result<UserInfo> ->
             onResult(null, result)
             if (result is Result.Success) result.data?.let { loadAndObserveChat(it) }
+        }
+    }
+
+    private fun loadUserInfo(userNotification: UserNotification) {
+        dbRepository.loadUserInfo(userNotification.userID) { result: Result<UserInfo> ->
+            onResult(_updatedUserNotification, result)
         }
     }
 
@@ -120,6 +163,16 @@ class HomeViewModel @Inject constructor(cmuDataStoreRepository: CmuDataStoreRepo
                     newList.removeIf { it2 -> result.msg.toString().contains(it2.mUserInfo.id) }
                     chatsList.value = newList
                 }
+            }
+        }
+    }
+
+    private fun loadAndObserveNotifications(){
+        val observer = FirebaseReferenceValueObserver()
+        firebaseReferenceObserverList.add(observer)
+        dbRepository.loadAndObserveUserNotifications(myUserId, observer){result ->
+            if (result is Result.Success) {
+                result.data?.forEach { loadUserInfo(it) }
             }
         }
     }
@@ -210,7 +263,7 @@ class HomeViewModel @Inject constructor(cmuDataStoreRepository: CmuDataStoreRepo
                 }
                 if (uid.isNotBlank()){
                     Timber.tag(tag).d("This is UID: $uid")
-                    dbRepository.updateNewSentRequest(myUserId, UserRequest(uid))
+//                    dbRepository.updateNewSentRequest(myUserId, UserRequest(uid))
                     dbRepository.updateNewNotification(uid, UserNotification(myUserId))
                     onAddContactEventTriggered(
                         AddContactEvents.Success,

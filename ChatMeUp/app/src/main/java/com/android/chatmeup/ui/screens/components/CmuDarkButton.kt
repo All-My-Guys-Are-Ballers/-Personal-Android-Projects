@@ -15,12 +15,13 @@ import com.android.chatmeup.ui.theme.cmuOffWhite
 
 @Composable
 fun CmuDarkButton(
+    modifier: Modifier = Modifier,
     padding: PaddingValues = PaddingValues(start = 80.dp, end = 80.dp),
     label: String,
     isLoading: Boolean = false,
     onClick: () -> Unit
 ){
-    Button(modifier = Modifier
+    Button(modifier = modifier
         .padding(padding)
         .height(50.dp)
         .fillMaxWidth(),
