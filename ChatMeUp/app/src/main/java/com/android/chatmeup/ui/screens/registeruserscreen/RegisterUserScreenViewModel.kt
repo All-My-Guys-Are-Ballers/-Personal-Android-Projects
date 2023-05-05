@@ -17,6 +17,8 @@ import com.android.chatmeup.data.db.entity.User
 import com.android.chatmeup.data.db.repository.DatabaseRepository
 import com.fredrikbogg.android_chat_app.data.model.CreateUser
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

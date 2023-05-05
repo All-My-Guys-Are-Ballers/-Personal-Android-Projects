@@ -1,5 +1,6 @@
 package com.android.chatmeup.ui.screens.components
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -14,12 +15,13 @@ import com.android.chatmeup.ui.theme.cmuOffWhite
 
 @Composable
 fun CmuDarkButton(
+    padding: PaddingValues = PaddingValues(start = 80.dp, end = 80.dp),
     label: String,
     isLoading: Boolean = false,
     onClick: () -> Unit
 ){
     Button(modifier = Modifier
-        .padding(start = 80.dp, end = 80.dp)
+        .padding(padding)
         .height(50.dp)
         .fillMaxWidth(),
         onClick = {

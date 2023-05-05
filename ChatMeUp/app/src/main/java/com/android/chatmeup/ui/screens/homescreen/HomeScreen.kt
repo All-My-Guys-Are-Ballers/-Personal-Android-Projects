@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.ModalBottomSheetLayout
+import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -27,8 +28,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -41,14 +40,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.android.chatmeup.R
+import com.android.chatmeup.ui.cmutoast.CmuToast
+import com.android.chatmeup.ui.cmutoast.CmuToastDuration
+import com.android.chatmeup.ui.cmutoast.CmuToastStyle
+import com.android.chatmeup.ui.screens.components.CmuDarkButton
 import com.android.chatmeup.ui.screens.components.CmuInputTextField
-import com.android.chatmeup.ui.screens.homescreen.model.ContactListItem
 import com.android.chatmeup.ui.theme.brand_color
 import com.android.chatmeup.ui.theme.cmuDarkBlue
 import com.android.chatmeup.ui.theme.cmuOffWhite
 import com.android.chatmeup.ui.theme.neutral_disabled
 import com.android.chatmeup.ui.theme.seed
 import com.android.chatmeup.ui.theme.success_green
+import com.android.chatmeup.util.isEmailValid
 import com.fredrikbogg.android_chat_app.data.model.ChatWithUserInfo
 import com.google.accompanist.pager.*
 import kotlinx.coroutines.CoroutineScope
@@ -64,14 +67,49 @@ fun HomeScreen(
 ){
     val chatsList by viewModel.chatsList.observeAsState()
 
+    val addContactEventState by viewModel.addContactEventState.collectAsState()
+
     var searchText = remember { mutableStateOf(TextFieldValue("")) }
 
     val pagerState = rememberPagerState(1)
 
     val scope = rememberCoroutineScope()
 
+    val modalBottomSheetState = androidx.compose.material.rememberModalBottomSheetState(
+        initialValue = ModalBottomSheetValue.Hidden,
+        confirmStateChange = { it != ModalBottomSheetValue.HalfExpanded }
+    )
+
+    var currentBottomSheet: BottomSheetScreen by remember{
+        mutableStateOf(BottomSheetScreen.AddContact)
+    }
+
+    val newContactEmail = remember {
+        mutableStateOf(TextFieldValue(""))
+    }
+
     ModalBottomSheetLayout(
-        sheetContent ={}
+        sheetState = modalBottomSheetState,
+        sheetContent = {
+            SheetLayout(
+                currentScreen = currentBottomSheet,
+                context = context,
+                activity = activity,
+                onAddContactClicked =
+                {
+                    viewModel.onAddContactEventTriggered(
+                        event = HomeViewModel.AddContactEvents.Loading,
+                        context = context,
+                        activity = activity,
+                        email = newContactEmail.value.text,
+                        errorMsg = "User does not have a ChatMeUp Account"
+                    )
+                },
+                newContactEmail = newContactEmail,
+                addContactEventState = addContactEventState,
+                onNewContactEmailChanged = {newContactEmail.value = it}
+            )
+        }
     ){
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -97,7 +135,14 @@ fun HomeScreen(
                             Modifier,
                             "Chats",
                             {
-                                IconButton(onClick = { }) {
+                                IconButton(
+                                    onClick = {
+                                        currentBottomSheet = BottomSheetScreen.AddContact
+                                        scope.launch {
+                                            modalBottomSheetState.show()
+                                        }
+                                    }
+                                ) {
                                     Icon(
                                         modifier = Modifier.size(20.dp),
                                         imageVector = ImageVector.vectorResource(id = R.drawable.ic_new_chat),
@@ -425,4 +470,73 @@ fun BottomBarItem(
             }
         }
     }
+}
+
+@Composable
+fun AddContactDialog(
+    context: Context,
+    activity: Activity?,
+    newContactEmail: MutableState<TextFieldValue>,
+    onNewContactEmailChanged: (TextFieldValue) -> Unit,
+    onAddContactClicked: () -> Unit,
+    addContactEventState: AddContactEventState,
+) {
+    Column() {
+        CmuInputTextField(
+            label = "",
+            placeholder = "Contact Email",
+            text = newContactEmail,
+            onValueChanged = onNewContactEmailChanged
+        )
+        CmuDarkButton(
+            label = "Add New Contact",
+            padding = PaddingValues(start = 30.dp, end =  30.dp),
+            isLoading = addContactEventState == AddContactEventState.LOADING,
+            onClick = {
+                if(newContactEmail.value.text.isEmailValid()){
+                    onAddContactClicked()
+                }
+                else{
+                    CmuToast.createFancyToast(
+                        context = context,
+                        activity = activity,
+                        title = "Email Error",
+                        message = "Please input a valid email",
+                        style = CmuToastStyle.ERROR,
+                        duration = CmuToastDuration.SHORT
+                    )
+                }
+
+            }
+        )
+    }
+}
+
+@Composable
+fun SheetLayout(
+    currentScreen: BottomSheetScreen,
+    context: Context,
+    activity: Activity?,
+    onAddContactClicked: () -> Unit,
+    newContactEmail: MutableState<TextFieldValue>,
+    onNewContactEmailChanged: (TextFieldValue) -> Unit,
+    addContactEventState: AddContactEventState,
+) {
+    when(currentScreen){
+        BottomSheetScreen.AddContact -> {
+            AddContactDialog(
+                context = context,
+                activity = activity,
+                newContactEmail = newContactEmail,
+                onNewContactEmailChanged = onNewContactEmailChanged,
+                addContactEventState = addContactEventState,
+                onAddContactClicked = onAddContactClicked
+            )
+        }
+    }
+}
+
+
+sealed class BottomSheetScreen {
+    object AddContact: BottomSheetScreen()
 }
