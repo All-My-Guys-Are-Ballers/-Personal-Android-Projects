@@ -156,6 +156,10 @@ class FirebaseDataSource {
         refToPath("users/$userID/info/status").setValue(status)
     }
 
+    fun updateOnlineStatus(userID: String, status: Boolean){
+        refToPath("users/$userID/info/online").setValue(status)
+    }
+
     fun updateLastMessage(chatID: String, message: Message) {
         refToPath("chats/$chatID/lastMessage").setValue(message)
     }

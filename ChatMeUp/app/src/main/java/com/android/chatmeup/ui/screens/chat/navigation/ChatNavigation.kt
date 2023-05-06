@@ -3,6 +3,8 @@ package com.android.chatmeup.ui.screens.chat.navigation
 import android.app.Activity
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavType
@@ -23,7 +25,7 @@ object ChatDestination : CmuNavigationDestination {
      */
     fun createNavigationRoute(chatArg: String): String {
         val encodedChatData = Uri.encode(chatArg)
-        return "transaction_result_route/$encodedChatData"
+        return "chat_route/$encodedChatData"
     }
 
     /**
@@ -34,12 +36,12 @@ object ChatDestination : CmuNavigationDestination {
         return Uri.decode(encodedId)
     }
 }
-fun NavGraphBuilder.transactionResultGraph(
+@RequiresApi(Build.VERSION_CODES.O)
+fun NavGraphBuilder.chatGraph(
     context: Context,
     activity: Activity?,
     factory: ChatViewModel.Factory,
-    onNavigateToTerminalNotMappedHome: (NavBackStackEntry) -> Unit,
-    onNavigateToHome: (NavBackStackEntry) -> Unit
+    onBackClicked: () -> Unit,
 ) {
     composable(
         route = ChatDestination.route,
@@ -54,6 +56,7 @@ fun NavGraphBuilder.transactionResultGraph(
             context = context,
             activity = activity,
             factory = factory,
+            onBackClicked = onBackClicked,
             chatId = try {
                 backStackEntry.arguments?.getString("chatData")?.split("%%%")?.get(0) ?: ""
             } catch (ex: Exception) {

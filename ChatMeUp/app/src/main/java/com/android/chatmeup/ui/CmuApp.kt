@@ -2,6 +2,8 @@ package com.android.chatmeup.ui
 
 import android.app.Activity
 import android.content.Context
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
@@ -13,6 +15,7 @@ import com.android.chatmeup.ui.screens.loginscreen.LoginDestination
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun CmuApp(
     chatMeUpApp: CmuApplication

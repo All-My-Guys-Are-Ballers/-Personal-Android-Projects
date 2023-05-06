@@ -3,6 +3,7 @@ package com.android.chatmeup.ui.screens.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -10,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.TextSelectionColors
+import androidx.compose.material.MaterialTheme.colors
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
@@ -36,12 +38,14 @@ fun CmuInputTextField(
     modifier: Modifier = Modifier,
     label: String,
     placeholder: String,
+    paddingValues: PaddingValues = PaddingValues(top = 16.dp, start = 30.dp, end = 30.dp),
     keyboardType: KeyboardType = KeyboardType.Text,
-    leadingIcon: @Composable() (() -> Unit)? = {},
+    singleLine: Boolean = true,
+    leadingIcon: @Composable (() -> Unit)? = null,
     text: MutableState<TextFieldValue>,
     imeAction: ImeAction = ImeAction.Done,
     onValueChanged: (TextFieldValue) -> Unit,
-    trailingIcon: @Composable() (() -> Unit)? = {},
+    trailingIcon: @Composable (() -> Unit)? = null,
     onDone: () -> Unit = {},
     visualTransformation: VisualTransformation = VisualTransformation.None,
     shape: Shape = RoundedCornerShape(12.dp)
@@ -52,7 +56,7 @@ fun CmuInputTextField(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = 16.dp, start = 30.dp, end = 30.dp),
+            .padding(paddingValues),
     ) {
         if(label.isNotBlank()){
             Text(
@@ -85,13 +89,96 @@ fun CmuInputTextField(
             shape = shape,
             visualTransformation = visualTransformation,
             trailingIcon = trailingIcon,
-            singleLine = true,
+            singleLine = singleLine,
             leadingIcon = leadingIcon,
             keyboardActions = KeyboardActions(
                 onDone = {
                     keyboardState?.hide()
                     onDone()
                          },
+                onNext = {
+                    focusManager.moveFocus(FocusDirection.Down)
+                }
+            ),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                focusedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                unfocusedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                selectionColors = TextSelectionColors(
+                    backgroundColor = neutral_disabled,
+                    handleColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            )
+        )
+    }
+}
+
+
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+fun CmuInputTextField(
+    modifier: Modifier = Modifier,
+    label: String,
+    placeholder: String,
+    paddingValues: PaddingValues = PaddingValues(top = 16.dp, start = 30.dp, end = 30.dp),
+    keyboardType: KeyboardType = KeyboardType.Text,
+    singleLine: Boolean = true,
+    leadingIcon: @Composable (() -> Unit)? = null,
+    text: String,
+    imeAction: ImeAction = ImeAction.Done,
+    onValueChanged: (String) -> Unit,
+    trailingIcon: @Composable (() -> Unit)? = null,
+    onDone: () -> Unit = {},
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    shape: Shape = RoundedCornerShape(12.dp)
+){
+    val keyboardState = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(paddingValues),
+    ) {
+        if(label.isNotBlank()){
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Start
+            )
+            Spacer(modifier = Modifier.padding(vertical = 4.dp))
+        }
+
+        OutlinedTextField(
+            modifier = Modifier
+                .fillMaxWidth()
+            ,
+            value = text,
+            onValueChange = {
+                onValueChanged(it)
+            },
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
+//            textStyle = MaterialTheme.typography.bodyLarge,
+            placeholder = {
+                Text(
+                    text = placeholder,
+                    color = neutral_disabled,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            shape = shape,
+            visualTransformation = visualTransformation,
+            trailingIcon = trailingIcon,
+            singleLine = singleLine,
+            leadingIcon = leadingIcon,
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    keyboardState?.hide()
+                    onDone()
+                },
                 onNext = {
                     focusManager.moveFocus(FocusDirection.Down)
                 }

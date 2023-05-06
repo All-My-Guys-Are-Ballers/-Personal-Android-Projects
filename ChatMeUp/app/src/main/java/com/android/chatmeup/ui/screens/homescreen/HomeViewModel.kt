@@ -125,7 +125,9 @@ class HomeViewModel @AssistedInject constructor(
     private fun loadUserInfo(userFriend: UserFriend) {
         dbRepository.loadUserInfo(userFriend.userID) { result: Result<UserInfo> ->
             onResult(null, result)
-            if (result is Result.Success) result.data?.let { loadAndObserveChat(it) }
+            if (result is Result.Success) result.data?.let {
+                loadAndObserveChat(it)
+            }
         }
     }
 
@@ -146,12 +148,33 @@ class HomeViewModel @AssistedInject constructor(
                 if (result is Result.Success) {
                     _updatedChatWithUserInfo.value =
                         result.data?.let { ChatWithUserInfo(it, userInfo) }
+                    result.data?.let { loadAndObserveUserInfo(it, userInfo) }
                 } else if (result is Result.Error) {
                     chatsList.value?.let {
                         val newList = mutableListOf<ChatWithUserInfo>().apply { addAll(it) }
                         newList.removeIf { it2 -> result.msg.toString().contains(it2.mUserInfo.id) }
                         chatsList.value = newList
                     }
+                }
+            }
+        }
+    }
+
+    private fun loadAndObserveUserInfo(chat: Chat, otherUserInfo: UserInfo){
+        val observer = FirebaseReferenceValueObserver()
+        firebaseReferenceObserverList.add(observer)
+        dbRepository.loadAndObserveUserInfo(
+            otherUserInfo.id,
+            observer
+        ) { result: Result<UserInfo> ->
+            if (result is Result.Success) {
+                _updatedChatWithUserInfo.value =
+                    result.data?.let { ChatWithUserInfo(chat, it) }
+            } else if (result is Result.Error) {
+                chatsList.value?.let {
+                    val newList = mutableListOf<ChatWithUserInfo>().apply { addAll(it) }
+                    newList.removeIf { it2 -> result.msg.toString().contains(it2.mUserInfo.id) }
+                    chatsList.value = newList
                 }
             }
         }

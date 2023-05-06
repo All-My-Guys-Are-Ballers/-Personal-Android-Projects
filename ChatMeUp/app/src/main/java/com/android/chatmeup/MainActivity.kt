@@ -1,8 +1,10 @@
 package com.android.chatmeup
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -14,7 +16,9 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.navigation.compose.rememberNavController
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
+import com.android.chatmeup.data.db.repository.DatabaseRepository
 import com.android.chatmeup.ui.CmuApp
+import com.android.chatmeup.ui.screens.chat.viewmodel.ChatViewModel
 import com.android.chatmeup.ui.screens.homescreen.HomeViewModel
 import com.android.chatmeup.ui.theme.ChatMeUpTheme
 import com.android.chatmeup.ui.theme.cmuDarkBlue
@@ -34,8 +38,7 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private lateinit var chatMeUpApp: CmuApplication
-    val auth: FirebaseAuth = Firebase.auth
-    val database: FirebaseDatabase = Firebase.database
+    private val dbRepository = DatabaseRepository()
 
     @Inject
     lateinit var cmuDataStoreRepository: CmuDataStoreRepository
@@ -44,13 +47,18 @@ class MainActivity : ComponentActivity() {
     @InstallIn(ActivityComponent::class)
     interface ViewModelFactoryProvider {
         fun homeViewModelFactory(): HomeViewModel.Factory
+        fun chatViewModelFactory(): ChatViewModel.Factory
+
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
 //        WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
 
         chatMeUpApp = applicationContext as CmuApplication
+
+        dbRepository.updateOnlineStatus(chatMeUpApp.myUserID, true)
 
         setContent {
             val systemUiController = rememberSystemUiController()
@@ -84,9 +92,11 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         chatMeUpApp.setCurrentActivity(this)
+        dbRepository.updateOnlineStatus(chatMeUpApp.myUserID, true)
     }
     override fun onPause() {
         super.onPause()
         chatMeUpApp.setCurrentActivity(this)
+        dbRepository.updateOnlineStatus(chatMeUpApp.myUserID, false)
     }
 }

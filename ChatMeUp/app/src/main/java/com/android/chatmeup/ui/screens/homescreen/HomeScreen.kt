@@ -27,6 +27,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.vectorResource
@@ -35,7 +36,6 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.android.chatmeup.R
 import com.android.chatmeup.data.db.entity.UserInfo
 import com.android.chatmeup.ui.cmutoast.CmuToast
@@ -64,6 +64,7 @@ fun HomeScreen(
     activity: Activity?,
     factory: HomeViewModel.Factory,
     myUserId: String,
+    onNavigateToChat: (String) -> Unit,
 ){
     val viewModel: HomeViewModel = homeViewModelProvider(
         factory = factory,
@@ -216,7 +217,9 @@ fun HomeScreen(
                         modifier = Modifier.padding(it),
                         searchTextValue = searchText,
                         onSearchTextValueChanged = { searchText.value = it },
-                        list = chatsList
+                        list = chatsList,
+                        myUserId = myUserId,
+                        onNavigateToChat = onNavigateToChat
                     )
 
                     2 -> Text(text = "More")
@@ -232,7 +235,9 @@ fun ChatsScreen(
     modifier: Modifier = Modifier,
     searchTextValue: MutableState<TextFieldValue>,
     onSearchTextValueChanged: (TextFieldValue) -> Unit,
-    list: MutableList<ChatWithUserInfo>?
+    list: MutableList<ChatWithUserInfo>?,
+    myUserId: String,
+    onNavigateToChat: (String) -> Unit
 ){
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -244,13 +249,22 @@ fun ChatsScreen(
                 onSearchTextValueChanged = onSearchTextValueChanged,
             )
             Spacer(modifier = Modifier.height(25.dp))
-            if(!list.isNullOrEmpty()){ ChatList(list = list) }
+            if(!list.isNullOrEmpty()){
+                ChatList(
+                    list = list,
+                    myUserId = myUserId,
+                    onNavigateToChat = onNavigateToChat
+                ) }
         }
     }
 }
 
 @Composable
-fun ChatList(list: MutableList<ChatWithUserInfo>){
+fun ChatList(
+    list: MutableList<ChatWithUserInfo>,
+    myUserId: String,
+    onNavigateToChat: (String) -> Unit
+){
 //    list?.sortBy { it.mChat.lastMessage.epochTimeMs }
     LazyColumn(
         modifier = Modifier.padding(start = 25.dp, end = 25.dp),
@@ -258,7 +272,11 @@ fun ChatList(list: MutableList<ChatWithUserInfo>){
     ){
         repeat(list.size){
             item {
-                ChatListItem(item = list[it])
+                ChatListItem(
+                    myUserId = myUserId,
+                    item = list[it],
+                    onNavigateToChat = onNavigateToChat
+                )
             }
         }
     }
@@ -268,54 +286,63 @@ fun ChatList(list: MutableList<ChatWithUserInfo>){
 @Composable
 fun ChatListItem(
     modifier: Modifier = Modifier,
-    item: ChatWithUserInfo
+    myUserId: String,
+    item: ChatWithUserInfo,
+    onNavigateToChat: (String) -> Unit
 ){
-    Row(modifier = modifier) {
-        ProfilePicture(
-            imageId = R.drawable.fine_lady_profile_pic,
-            isOnline = true,
-            size = 60.dp
-        )
-        Spacer(modifier = Modifier.width(20.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = item.mUserInfo.displayName,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
+    Card(onClick = {
+        onNavigateToChat("${item.mChat.info.id}%%%${myUserId}%%%${item.mUserInfo.id}")
+    },
+        shape = RectangleShape,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)
+    ) {
+        Row(modifier = modifier) {
+            ProfilePicture(
+                imageId = R.drawable.fine_lady_profile_pic,
+                isOnline = item.mUserInfo.online,
+                size = 60.dp
             )
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = item.mChat.lastMessage.text,
-                overflow = TextOverflow.Ellipsis,
-                color = neutral_disabled,
-                style = MaterialTheme.typography.labelLarge
-            )
-        }
-        Column(
-            modifier = Modifier.fillMaxHeight(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "Today",
-                color = neutral_disabled,
-                style = MaterialTheme.typography.labelLarge
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            Card(
-                shape = CircleShape,
-                colors = CardDefaults.cardColors(
-                    containerColor = brand_color
+            Spacer(modifier = Modifier.width(20.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = item.mUserInfo.displayName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium
                 )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = item.mChat.lastMessage.text,
+                    overflow = TextOverflow.Ellipsis,
+                    color = neutral_disabled,
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+            Column(
+                modifier = Modifier.fillMaxHeight(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "12",
-                    modifier = Modifier.padding(
-                        start = 8.dp, end = 8.dp, top = 4.dp, bottom = 4.dp
-                    ),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = seed
+                    text = "Today",
+                    color = neutral_disabled,
+                    style = MaterialTheme.typography.labelLarge
                 )
+                Spacer(modifier = Modifier.height(10.dp))
+                Card(
+                    shape = CircleShape,
+                    colors = CardDefaults.cardColors(
+                        containerColor = brand_color
+                    )
+                ) {
+                    Text(
+                        text = "12",
+                        modifier = Modifier.padding(
+                            start = 8.dp, end = 8.dp, top = 4.dp, bottom = 4.dp
+                        ),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = seed
+                    )
+                }
             }
         }
     }

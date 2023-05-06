@@ -17,6 +17,10 @@ class DatabaseRepository {
         firebaseDatabaseService.updateUserStatus(userID, status)
     }
 
+    fun updateOnlineStatus(userID: String, status: Boolean){
+        firebaseDatabaseService.updateOnlineStatus(userID, status)
+    }
+
     fun updateNewMessage(messagesID: String, message: Message) {
         firebaseDatabaseService.pushNewMessage(messagesID, message)
     }
