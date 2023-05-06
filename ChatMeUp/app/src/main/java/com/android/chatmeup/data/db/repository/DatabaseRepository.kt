@@ -130,6 +130,10 @@ class DatabaseRepository {
         firebaseDatabaseService.attachUserObserver(User::class.java, userID, observer, b)
     }
 
+    fun loadAndObserveFriends(userID: String, observer: FirebaseReferenceValueObserver, b: ((Result<MutableList<UserFriend>>) -> Unit)){
+        firebaseDatabaseService.attachUserFriendsObserver(UserFriend::class.java, userID, observer, b)
+    }
+
     fun loadAndObserveUserInfo(userID: String, observer: FirebaseReferenceValueObserver, b: ((Result<UserInfo>) -> Unit)) {
         firebaseDatabaseService.attachUserInfoObserver(UserInfo::class.java, userID, observer, b)
     }

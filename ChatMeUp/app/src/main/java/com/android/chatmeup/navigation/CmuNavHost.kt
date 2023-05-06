@@ -8,7 +8,6 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import com.android.chatmeup.MainActivity
-import com.android.chatmeup.data.datastore.CmuDataStoreRepository
 import com.android.chatmeup.ui.screens.homescreen.HomeDestination
 import com.android.chatmeup.ui.screens.homescreen.homeGraph
 import com.android.chatmeup.ui.screens.loginscreen.loginGraph
@@ -25,6 +24,7 @@ fun CmuNavHost(
     startDestination: String,
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit,
+    myUserId: String,
 ) {
 
     NavHost(
@@ -52,6 +52,10 @@ fun CmuNavHost(
         homeGraph(
             context = context,
             activity = activity,
+            factory = EntryPointAccessors.fromActivity(
+                context as Activity, MainActivity.ViewModelFactoryProvider::class.java
+            ).homeViewModelFactory(),
+            myUserId = myUserId
         )
     }
 }

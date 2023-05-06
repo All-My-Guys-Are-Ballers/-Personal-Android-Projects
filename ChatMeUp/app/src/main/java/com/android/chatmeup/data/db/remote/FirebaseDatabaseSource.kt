@@ -269,6 +269,13 @@ class FirebaseDataSource {
         refObs.start(listener, refToPath("users/$userID/info"))
     }
 
+    fun <T> attachUserFriendsObserver(resultClassName: Class<T>, userID: String, firebaseReferenceValueObserver: FirebaseReferenceValueObserver,
+                                            b: ((Result<MutableList<T>>) -> Unit)
+    ) {
+        val listener = attachValueListenerToBlockWithList(resultClassName, b)
+        firebaseReferenceValueObserver.start(listener, refToPath("users/$userID/friends"))
+    }
+
     fun <T> attachUserNotificationsObserver(resultClassName: Class<T>, userID: String, firebaseReferenceValueObserver: FirebaseReferenceValueObserver,
                                             b: ((Result<MutableList<T>>) -> Unit)
     ) {

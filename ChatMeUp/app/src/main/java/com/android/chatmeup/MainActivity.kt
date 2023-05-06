@@ -15,6 +15,7 @@ import androidx.core.view.updatePadding
 import androidx.navigation.compose.rememberNavController
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
 import com.android.chatmeup.ui.CmuApp
+import com.android.chatmeup.ui.screens.homescreen.HomeViewModel
 import com.android.chatmeup.ui.theme.ChatMeUpTheme
 import com.android.chatmeup.ui.theme.cmuDarkBlue
 import com.android.chatmeup.ui.theme.cmuOffWhite
@@ -24,7 +25,10 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
 import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.components.ActivityComponent
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -36,11 +40,12 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var cmuDataStoreRepository: CmuDataStoreRepository
 
-//    @EntryPoint
-//    @InstallIn(ActivityComponent::class)
-//    interface ViewModelFactoryProvider {
-//        fun homeViewModelFactory(): HomeViewModel.Factory
-//    }
+    @EntryPoint
+    @InstallIn(ActivityComponent::class)
+    interface ViewModelFactoryProvider {
+        fun homeViewModelFactory(): HomeViewModel.Factory
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
 //        WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
@@ -67,13 +72,8 @@ class MainActivity : ComponentActivity() {
                 // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-//                    color = MaterialTheme.colorScheme.background
                 ) {
-//                    HomeScreen(context = applicationContext, activity = chatMeUpApp.getCurrentActivity() )
                     CmuApp(
-                        context = applicationContext,
-                        activity = this,
-                        navController = navController,
                         chatMeUpApp = chatMeUpApp,
                     )
                 }

@@ -15,6 +15,8 @@ object HomeDestination : CmuNavigationDestination {
 fun NavGraphBuilder.homeGraph(
     context: Context,
     activity: Activity?,
+    factory: HomeViewModel.Factory,
+    myUserId: String,
 ) {
     composable(
         route = HomeDestination.route
@@ -22,6 +24,8 @@ fun NavGraphBuilder.homeGraph(
         HomeScreen(
             context = context,
             activity = activity,
+            factory = factory,
+            myUserId = myUserId
         )
     }
 }

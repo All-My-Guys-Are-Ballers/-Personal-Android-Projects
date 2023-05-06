@@ -15,6 +15,7 @@ import com.android.chatmeup.ui.cmutoast.CmuToastStyle
 import com.android.chatmeup.data.Result
 import com.android.chatmeup.data.db.entity.User
 import com.android.chatmeup.data.db.repository.DatabaseRepository
+import com.android.chatmeup.util.SharedPreferencesUtil
 import com.fredrikbogg.android_chat_app.data.model.CreateUser
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.ktx.auth
@@ -23,6 +24,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 enum class RegisterUserStatus{
@@ -52,6 +54,7 @@ class RegisterUserScreenViewModel @Inject constructor(cmuDataStoreRepository: Cm
         email: String = "",
         password: String = "",
         displayName: String = "",
+        myUserId: String? = "",
         onRegisterUser: () -> Unit = {},
     ){
         when(event){
@@ -81,6 +84,10 @@ class RegisterUserScreenViewModel @Inject constructor(cmuDataStoreRepository: Cm
                         CmuToastDuration.SHORT
                     )
                 }, 200)
+                try{ saveUserId(context, myUserId!!) }
+                catch(e: Exception){
+                    Timber.tag(tag).d("Error: $e")
+                }
             }
             RegisterUserEvents.ErrorEvent -> {
                 registerUserEventStatus.value = RegisterUserStatus.ERROR
@@ -119,11 +126,13 @@ class RegisterUserScreenViewModel @Inject constructor(cmuDataStoreRepository: Cm
                     info.displayName = createUser.displayName
                     info.email = createUser.email
                 })
+//                saveUserId(result.data?.uid.toString())
                 onEventTriggered(
                     activity = activity,
                     context = context,
                     event = RegisterUserEvents.DoneEvent,
                     onRegisterUser = onRegisterUser,
+                    myUserId = result.data?.uid
                 )
             }
             else if (result is Result.Error) {
@@ -140,11 +149,8 @@ class RegisterUserScreenViewModel @Inject constructor(cmuDataStoreRepository: Cm
         }
     }
 
-    @WorkerThread
-    private fun saveUserId(value: String?) = viewModelScope.launch(Dispatchers.IO) {
-        if (value != null) {
-            cmuDataStoreRepository?.saveUserId(value)
-        }
+    private fun saveUserId(context: Context, value: String) {
+        SharedPreferencesUtil.saveUserID(context, value)
     }
 
     sealed class RegisterUserEvents(){

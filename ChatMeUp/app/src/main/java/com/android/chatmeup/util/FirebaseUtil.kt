@@ -1,6 +1,8 @@
 package com.android.chatmeup.util
 
+import android.content.ContentValues.TAG
 import com.google.firebase.database.DataSnapshot
+import timber.log.Timber
 
 fun <T> wrapSnapshotToClass(className: Class<T>, snap: DataSnapshot): T? {
     return snap.getValue(className)
@@ -11,6 +13,7 @@ fun <T> wrapSnapshotToArrayList(className: Class<T>, snap: DataSnapshot): Mutabl
     for (child in snap.children) {
         child.getValue(className)?.let { arrayList.add(it) }
     }
+    Timber.tag(TAG).d("No of Stuffs ${arrayList.size}")
     return arrayList
 }
 

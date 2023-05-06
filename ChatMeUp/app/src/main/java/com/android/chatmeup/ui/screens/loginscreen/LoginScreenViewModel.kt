@@ -16,6 +16,7 @@ import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
 import com.android.chatmeup.data.Result
+import com.android.chatmeup.util.SharedPreferencesUtil
 import com.fredrikbogg.android_chat_app.data.model.Login
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.ktx.auth
@@ -25,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import javax.inject.Inject
 
 enum class LoginStatus{
@@ -55,6 +57,7 @@ class LoginScreenViewModel @Inject constructor(cmuDataStoreRepository: CmuDataSt
         email: String = "",
         password: String = "",
         onLoggedIn: () -> Unit = {},
+        myUserId: String? = "",
     ){
         when(event){
             LoginEvents.InitLoginEvent -> {
@@ -88,17 +91,17 @@ class LoginScreenViewModel @Inject constructor(cmuDataStoreRepository: CmuDataSt
             }
             LoginEvents.DoneEvent -> {
                 loginEventStatus.value = LoginStatus.DONE
-                saveUserId(Firebase.auth.uid)
+                try{ saveUserId(context, myUserId!!) }
+                catch(e: Exception){
+                    Timber.tag(tag).d("Error: $e")
+                }
                 onLoggedIn()
             }
         }
     }
 
-    @WorkerThread
-    private fun saveUserId(value: String?) = viewModelScope.launch(Dispatchers.IO) {
-        if (value != null) {
-            cmuDataStoreRepository?.saveUserId(value)
-        }
+    private fun saveUserId(context: Context, value: String) {
+        SharedPreferencesUtil.saveUserID(context, value)
     }
 
     @WorkerThread
@@ -128,11 +131,13 @@ class LoginScreenViewModel @Inject constructor(cmuDataStoreRepository: CmuDataSt
         authRepository.loginUser(login) { result: Result<FirebaseUser> ->
             onResult(null, result)
             if (result is Result.Success) {
+//                saveUserId(result.data?.uid)
                 onEventTriggered(
                     activity = activity,
                     context = context,
                     event = LoginEvents.DoneEvent,
-                    onLoggedIn = onLoggedIn
+                    onLoggedIn = onLoggedIn,
+                    myUserId = result.data?.uid
                 )
             }
             else if (result is Result.Error) {
@@ -140,7 +145,7 @@ class LoginScreenViewModel @Inject constructor(cmuDataStoreRepository: CmuDataSt
                     activity = activity,
                     context = context,
                     event = LoginEvents.ErrorEvent,
-                    onLoggedIn = onLoggedIn
+                    onLoggedIn = onLoggedIn,
                 )
             }
             else {

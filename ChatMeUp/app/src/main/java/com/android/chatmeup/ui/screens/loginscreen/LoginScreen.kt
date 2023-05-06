@@ -141,7 +141,7 @@ fun LoginScreen(
                         LoginScreenViewModel.LoginEvents.LoadingEvent,
                         email = email.value.text,
                         password = password.value.text,
-                        onLoggedIn
+                        onLoggedIn,
                     )
                     else {CmuToast.createFancyToast(
                         context = context,

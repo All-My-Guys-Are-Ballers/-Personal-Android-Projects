@@ -2,6 +2,7 @@ package com.android.chatmeup
 
 import android.app.Activity
 import android.app.Application
+import com.android.chatmeup.util.SharedPreferencesUtil
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 
@@ -29,5 +30,12 @@ class CmuApplication: Application() {
     fun setCurrentActivity(mCurrentActivity: Activity?) {
         this.mCurrentActivity = mCurrentActivity
     }
+
+    var myUserID: String = ""
+        get() {
+            field = SharedPreferencesUtil.getUserID(this.applicationContext).orEmpty()
+            return field
+        }
+        private set
 
 }

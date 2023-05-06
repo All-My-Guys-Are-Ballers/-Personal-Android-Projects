@@ -18,7 +18,6 @@ import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.rounded.Circle
@@ -51,7 +50,6 @@ import com.android.chatmeup.ui.theme.cmuOffWhite
 import com.android.chatmeup.ui.theme.md_theme_dark_onPrimaryContainer
 import com.android.chatmeup.ui.theme.neutral_disabled
 import com.android.chatmeup.ui.theme.seed
-import com.android.chatmeup.ui.theme.success_green
 import com.android.chatmeup.util.isEmailValid
 import com.fredrikbogg.android_chat_app.data.model.ChatWithUserInfo
 import com.google.accompanist.pager.*
@@ -64,15 +62,21 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     context: Context,
     activity: Activity?,
-    viewModel: HomeViewModel = hiltViewModel(),
+    factory: HomeViewModel.Factory,
+    myUserId: String,
 ){
+    val viewModel: HomeViewModel = homeViewModelProvider(
+        factory = factory,
+        myUserId = myUserId
+    )
+
     val chatsList by viewModel.chatsList.observeAsState()
 
-    val notificationsList by viewModel.notificationListwithUserInfo.observeAsState()
+    val notificationsList by viewModel.notificationListWithUserInfo.observeAsState()
 
     val addContactEventState by viewModel.addContactEventState.collectAsState()
 
-    var searchText = remember { mutableStateOf(TextFieldValue("")) }
+    val searchText = remember { mutableStateOf(TextFieldValue("")) }
 
     val pagerState = rememberPagerState(1)
 
@@ -240,21 +244,21 @@ fun ChatsScreen(
                 onSearchTextValueChanged = onSearchTextValueChanged,
             )
             Spacer(modifier = Modifier.height(25.dp))
-            ChatList(list = list)
+            if(!list.isNullOrEmpty()){ ChatList(list = list) }
         }
     }
 }
 
 @Composable
-fun ChatList(list: MutableList<ChatWithUserInfo>?){
-    list?.sortBy { it.mChat.lastMessage.epochTimeMs }
+fun ChatList(list: MutableList<ChatWithUserInfo>){
+//    list?.sortBy { it.mChat.lastMessage.epochTimeMs }
     LazyColumn(
         modifier = Modifier.padding(start = 25.dp, end = 25.dp),
         verticalArrangement = Arrangement.spacedBy(25.dp)
     ){
-        repeat(3){
+        repeat(list.size){
             item {
-                ChatListItem(item = null)
+                ChatListItem(item = list[it])
             }
         }
     }
@@ -264,7 +268,7 @@ fun ChatList(list: MutableList<ChatWithUserInfo>?){
 @Composable
 fun ChatListItem(
     modifier: Modifier = Modifier,
-    item: ChatWithUserInfo?
+    item: ChatWithUserInfo
 ){
     Row(modifier = modifier) {
         ProfilePicture(
@@ -275,13 +279,13 @@ fun ChatListItem(
         Spacer(modifier = Modifier.width(20.dp))
         Column(Modifier.weight(1f)) {
             Text(
-                text = "Joshua Owolabi",
+                text = item.mUserInfo.displayName,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium
             )
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "How are you",
+                text = item.mChat.lastMessage.text,
                 overflow = TextOverflow.Ellipsis,
                 color = neutral_disabled,
                 style = MaterialTheme.typography.labelLarge
