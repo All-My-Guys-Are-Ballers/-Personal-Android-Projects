@@ -45,6 +45,10 @@ class DatabaseRepository {
         firebaseDatabaseService.updateLastMessage(chatID, message)
     }
 
+    fun updateUnreadMessages(chatID: String, isFirst: Boolean, value: Int){
+        firebaseDatabaseService.updateUnreadMessages(chatID, isFirst, value)
+    }
+
     fun updateNewChat(chat: Chat){
         firebaseDatabaseService.updateNewChat(chat)
     }

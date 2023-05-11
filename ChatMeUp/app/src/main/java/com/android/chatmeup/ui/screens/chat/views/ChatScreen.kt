@@ -16,7 +16,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.MaterialTheme.colors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBackIosNew
@@ -29,8 +32,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,6 +52,8 @@ import com.android.chatmeup.ui.screens.components.CmuInputTextField
 import com.android.chatmeup.ui.screens.components.ProfilePicture
 import com.android.chatmeup.ui.theme.seed
 import com.android.chatmeup.util.epochToHoursAndMinutes
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -71,6 +79,8 @@ fun ChatScreen(
 
     val newMessageText by viewModel.newMessageText.observeAsState()
 
+    val lazyListState by viewModel.lazyListState.collectAsState()
+
     Scaffold(
         topBar = {
             ChatTopBar(
@@ -90,7 +100,11 @@ fun ChatScreen(
             color = MaterialTheme.colorScheme.tertiaryContainer
         ){
             if (!messageList.isNullOrEmpty()){
-                LazyColumn(modifier = Modifier.padding(paddingValues)) {
+                LazyColumn(
+                    state = lazyListState,
+                    verticalArrangement = Arrangement.Bottom,
+                    modifier = Modifier.padding(paddingValues)
+                ) {
                     repeat(messageList?.size ?: 0) {
                         item{ 
                             MessageItem(
@@ -113,10 +127,14 @@ fun MessageItem(
 ){
     val isSender = myUserId == message.senderID
     Row(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
             .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 5.dp),
         horizontalArrangement = if(isSender) Arrangement.End else Arrangement.Start
     ) {
+        if(isSender){
+            Spacer(modifier = Modifier.fillMaxWidth(0.2f))
+        }
         Card(
             shape = RoundedCornerShape(
                 topStartPercent = 25,
@@ -144,9 +162,12 @@ fun MessageItem(
                         } else ""
                     }",
                     color = if(isSender) Color.White else MaterialTheme.colorScheme.onBackground,
-                    style = MaterialTheme.typography.labelLarge
+                    style = MaterialTheme.typography.labelSmall
                 )
             }
+        }
+        if(!isSender){
+            Spacer(modifier = Modifier.fillMaxWidth(0.2f))
         }
     }
 }
@@ -156,8 +177,7 @@ fun ChatTopBar(otherUserInfo: UserInfo?,
                onBackClicked: () -> Unit,
 ){
     Surface(
-        modifier = Modifier.fillMaxWidth()
-        ,
+        modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.background
     ){
         Row(
@@ -171,8 +191,9 @@ fun ChatTopBar(otherUserInfo: UserInfo?,
                 )
             }
             ProfilePicture(
-                imageId = R.drawable.fine_lady_profile_pic,
-                size = 40.dp
+                imageUrl = otherUserInfo?.profileImageUrl ?: "",
+                size = 40.dp,
+                isOnline = otherUserInfo?.online ?: false
             )
             
             Spacer(modifier = Modifier.width(20.dp))
@@ -207,8 +228,7 @@ fun ChatBottomBar(
 
             CmuInputTextField(
                 modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp),
+                    .weight(1f),
                 paddingValues = PaddingValues(),
                 label = "",
                 placeholder = "Message",
@@ -216,7 +236,8 @@ fun ChatBottomBar(
                 onValueChanged = {
                     viewModel.newMessageText.value = it
                 },
-                singleLine = false
+                singleLine = false,
+                maxLines = 3,
             )
             IconButton(onClick = {
                 viewModel.sendMessagePressed()
@@ -224,7 +245,8 @@ fun ChatBottomBar(
                 Icon(
                     modifier = Modifier.size(24.dp),
                     imageVector = ImageVector.Companion.vectorResource(id = R.drawable.ic_send_button),
-                    contentDescription = "Send Message button"
+                    contentDescription = "Send Message button",
+                    tint = seed
                 )
             }
         }

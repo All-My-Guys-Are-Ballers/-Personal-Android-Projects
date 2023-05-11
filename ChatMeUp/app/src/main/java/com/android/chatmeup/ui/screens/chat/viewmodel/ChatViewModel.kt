@@ -1,10 +1,12 @@
 package com.android.chatmeup.ui.screens.chat.viewmodel
 
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.android.chatmeup.data.Result
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
@@ -21,6 +23,8 @@ import com.android.chatmeup.util.addNewItem
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 
 class ChatViewModel @AssistedInject constructor(
     @Assisted("chatId") private val chatId: String,
@@ -39,6 +43,8 @@ class ChatViewModel @AssistedInject constructor(
     val messagesList = MediatorLiveData<MutableList<Message>>()
     val newMessageText = MutableLiveData<String>()
     val otherUser: LiveData<UserInfo> = _otherUser
+
+    val lazyListState = MutableStateFlow(LazyListState())
 
     init {
         setupChat()
@@ -90,6 +96,11 @@ class ChatViewModel @AssistedInject constructor(
             dbRepository.updateNewMessage(chatId, newMsg)
             dbRepository.updateChatLastMessage(chatId, newMsg)
             newMessageText.value = null
+            viewModelScope.launch{
+                if(lazyListState.value.layoutInfo.totalItemsCount>=1){
+                    lazyListState.value.scrollToItem(lazyListState.value.layoutInfo.totalItemsCount - 1)
+                }
+            }
         }
     }
     @AssistedFactory

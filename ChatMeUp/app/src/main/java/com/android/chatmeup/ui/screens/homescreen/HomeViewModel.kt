@@ -25,7 +25,7 @@ import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
 import com.android.chatmeup.util.removeItem
-import com.fredrikbogg.android_chat_app.data.model.ChatWithUserInfo
+import com.android.chatmeup.data.model.ChatWithUserInfo
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject

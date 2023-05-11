@@ -38,4 +38,7 @@ class CmuApplication: Application() {
         }
         private set
 
+    fun setUserId (){
+
+    }
 }

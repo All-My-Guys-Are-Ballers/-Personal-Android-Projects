@@ -125,6 +125,7 @@ fun CmuInputTextField(
     keyboardType: KeyboardType = KeyboardType.Text,
     singleLine: Boolean = true,
     leadingIcon: @Composable (() -> Unit)? = null,
+    maxLines: Int = 1,
     text: String,
     imeAction: ImeAction = ImeAction.Done,
     onValueChanged: (String) -> Unit,
@@ -173,6 +174,7 @@ fun CmuInputTextField(
             visualTransformation = visualTransformation,
             trailingIcon = trailingIcon,
             singleLine = singleLine,
+            maxLines = maxLines,
             leadingIcon = leadingIcon,
             keyboardActions = KeyboardActions(
                 onDone = {

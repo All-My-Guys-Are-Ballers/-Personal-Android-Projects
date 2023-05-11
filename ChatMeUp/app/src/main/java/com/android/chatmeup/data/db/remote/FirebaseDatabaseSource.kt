@@ -164,6 +164,11 @@ class FirebaseDataSource {
         refToPath("chats/$chatID/lastMessage").setValue(message)
     }
 
+    fun updateUnreadMessages(chatID: String, isFirst:Boolean, value: Int){
+        if (isFirst){ refToPath("chats/$chatID/info/no_of_unread_messages_for_first_user").setValue(value) }
+        else {refToPath("chats/$chatID/info/no_of_unread_messages_for_second_user").setValue(value) }
+    }
+
     fun updateNewFriend(myUser: UserFriend, otherUser: UserFriend) {
         refToPath("users/${myUser.userID}/friends/${otherUser.userID}").setValue(otherUser)
         refToPath("users/${otherUser.userID}/friends/${myUser.userID}").setValue(myUser)

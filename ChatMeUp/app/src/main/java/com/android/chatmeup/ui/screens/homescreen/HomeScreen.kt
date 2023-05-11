@@ -3,13 +3,15 @@ package com.android.chatmeup.ui.screens.homescreen
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
+import android.net.Uri
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.ModalBottomSheetLayout
@@ -18,6 +20,7 @@ import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.rounded.Circle
@@ -36,6 +39,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavBackStackEntry
 import com.android.chatmeup.R
 import com.android.chatmeup.data.db.entity.UserInfo
 import com.android.chatmeup.ui.cmutoast.CmuToast
@@ -44,18 +48,22 @@ import com.android.chatmeup.ui.cmutoast.CmuToastStyle
 import com.android.chatmeup.ui.screens.components.CmuDarkButton
 import com.android.chatmeup.ui.screens.components.CmuInputTextField
 import com.android.chatmeup.ui.screens.components.ProfilePicture
-import com.android.chatmeup.ui.theme.brand_color
 import com.android.chatmeup.ui.theme.cmuDarkBlue
 import com.android.chatmeup.ui.theme.cmuOffWhite
 import com.android.chatmeup.ui.theme.md_theme_dark_onPrimaryContainer
 import com.android.chatmeup.ui.theme.neutral_disabled
 import com.android.chatmeup.ui.theme.seed
+import com.android.chatmeup.util.epochToHoursAndMinutes
 import com.android.chatmeup.util.isEmailValid
-import com.fredrikbogg.android_chat_app.data.model.ChatWithUserInfo
+import com.android.chatmeup.data.model.ChatWithUserInfo
+import com.android.chatmeup.util.SharedPreferencesUtil
 import com.google.accompanist.pager.*
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalPagerApi::class, ExperimentalMaterialApi::class, ExperimentalComposeUiApi::class)
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
@@ -65,10 +73,13 @@ fun HomeScreen(
     factory: HomeViewModel.Factory,
     myUserId: String,
     onNavigateToChat: (String) -> Unit,
+    onNavigateToLogin: () -> Unit,
 ){
+    val myUserID = SharedPreferencesUtil.getUserID(context)
+
     val viewModel: HomeViewModel = homeViewModelProvider(
         factory = factory,
-        myUserId = myUserId
+        myUserId = myUserID!!
     )
 
     val chatsList by viewModel.chatsList.observeAsState()
@@ -141,7 +152,10 @@ fun HomeScreen(
                             Modifier,
                             "Contacts",
                             {
-                                IconButton(onClick = { }) {
+                                IconButton(onClick = {
+                                    Firebase.auth.signOut()
+                                    onNavigateToLogin()
+                                }) {
                                     Icon(
                                         modifier = Modifier.size(22.dp),
                                         imageVector = Icons.Filled.Add,
@@ -230,6 +244,7 @@ fun HomeScreen(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ChatsScreen(
     modifier: Modifier = Modifier,
@@ -259,6 +274,7 @@ fun ChatsScreen(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ChatList(
     list: MutableList<ChatWithUserInfo>,
@@ -282,6 +298,7 @@ fun ChatList(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatListItem(
@@ -298,7 +315,7 @@ fun ChatListItem(
     ) {
         Row(modifier = modifier) {
             ProfilePicture(
-                imageId = R.drawable.fine_lady_profile_pic,
+                imageUrl = item.mUserInfo.profileImageUrl,
                 isOnline = item.mUserInfo.online,
                 size = 60.dp
             )
@@ -307,14 +324,16 @@ fun ChatListItem(
                 Text(
                     text = item.mUserInfo.displayName,
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
                     text = item.mChat.lastMessage.text,
                     overflow = TextOverflow.Ellipsis,
                     color = neutral_disabled,
-                    style = MaterialTheme.typography.labelLarge
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = 1
                 )
             }
             Column(
@@ -323,24 +342,17 @@ fun ChatListItem(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "Today",
+                    text = epochToHoursAndMinutes(item.mChat.lastMessage.epochTimeMs),
                     color = neutral_disabled,
                     style = MaterialTheme.typography.labelLarge
                 )
                 Spacer(modifier = Modifier.height(10.dp))
-                Card(
-                    shape = CircleShape,
-                    colors = CardDefaults.cardColors(
-                        containerColor = brand_color
-                    )
-                ) {
-                    Text(
-                        text = "12",
-                        modifier = Modifier.padding(
-                            start = 8.dp, end = 8.dp, top = 4.dp, bottom = 4.dp
-                        ),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = seed
+                if(!item.mChat.lastMessage.seen){
+                    Icon(
+                        modifier = Modifier.size(12.dp),
+                        imageVector = Icons.Default.Circle,
+                        contentDescription = "Unread text from ${item.mUserInfo.displayName}",
+                        tint = seed
                     )
                 }
             }
@@ -521,7 +533,7 @@ fun RequestsList(
             item {
                 Row() {
                     ProfilePicture(
-                        imageId = R.drawable.fine_lady_profile_pic,
+                        imageUrl = notificationsList[it].profileImageUrl,
                         isOnline = true,
                         size = 90.dp
                     )

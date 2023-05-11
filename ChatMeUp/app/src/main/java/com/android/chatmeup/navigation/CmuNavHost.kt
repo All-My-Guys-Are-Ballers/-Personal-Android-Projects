@@ -14,6 +14,7 @@ import com.android.chatmeup.ui.screens.chat.navigation.ChatDestination
 import com.android.chatmeup.ui.screens.chat.navigation.chatGraph
 import com.android.chatmeup.ui.screens.homescreen.HomeDestination
 import com.android.chatmeup.ui.screens.homescreen.homeGraph
+import com.android.chatmeup.ui.screens.loginscreen.LoginDestination
 import com.android.chatmeup.ui.screens.loginscreen.loginGraph
 import com.android.chatmeup.ui.screens.registeruserscreen.RegisterUserDestination
 import com.android.chatmeup.ui.screens.registeruserscreen.registerUserGraph
@@ -68,6 +69,9 @@ fun CmuNavHost(
                     ChatDestination.createNavigationRoute(s)
                 )
             },
+            onNavigateToLogin = {backStackEntry->
+                onNavigateToDestination(backStackEntry, LoginDestination, LoginDestination.route)
+            }
         )
 
         chatGraph(

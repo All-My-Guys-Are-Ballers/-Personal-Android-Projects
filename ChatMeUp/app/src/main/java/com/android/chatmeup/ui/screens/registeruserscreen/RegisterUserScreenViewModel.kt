@@ -2,10 +2,9 @@ package com.android.chatmeup.ui.screens.registeruserscreen
 
 import android.app.Activity
 import android.content.Context
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
-import androidx.annotation.WorkerThread
-import androidx.lifecycle.viewModelScope
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
 import com.android.chatmeup.data.db.repository.AuthRepository
 import com.android.chatmeup.ui.DefaultViewModel
@@ -15,15 +14,14 @@ import com.android.chatmeup.ui.cmutoast.CmuToastStyle
 import com.android.chatmeup.data.Result
 import com.android.chatmeup.data.db.entity.User
 import com.android.chatmeup.data.db.repository.DatabaseRepository
+import com.android.chatmeup.data.db.repository.StorageRepository
 import com.android.chatmeup.util.SharedPreferencesUtil
+import com.android.chatmeup.util.convertFileToByteArray
 import com.fredrikbogg.android_chat_app.data.model.CreateUser
 import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -34,13 +32,27 @@ enum class RegisterUserStatus{
     ERROR,
 }
 
+enum class ProfilePictureStatus{
+    INIT,
+    LOADING,
+    DONE,
+    ERROR,
+}
+
 @HiltViewModel
 class RegisterUserScreenViewModel @Inject constructor(cmuDataStoreRepository: CmuDataStoreRepository) : DefaultViewModel(){
     var cmuDataStoreRepository: CmuDataStoreRepository? = null
     private val tag: String = "RegisterUserScreenViewModel"
-    val registerUserEventStatus = MutableStateFlow(RegisterUserStatus.INIT)
+
+    private val _registerUserEventStatus = MutableStateFlow(RegisterUserStatus.INIT)
+    val registerUserEventStatus = _registerUserEventStatus.asStateFlow()
+
+    private val _profilePictureEventStatus = MutableStateFlow(ProfilePictureStatus.INIT)
+    val profilePictureStatus = _profilePictureEventStatus.asStateFlow()
+
     private val authRepository = AuthRepository()
     private val dbRepository = DatabaseRepository()
+    private val storageRepository = StorageRepository()
 
 
     init {
@@ -53,27 +65,30 @@ class RegisterUserScreenViewModel @Inject constructor(cmuDataStoreRepository: Cm
         event: RegisterUserEvents,
         email: String = "",
         password: String = "",
+        imageUri: Uri? = null,
         displayName: String = "",
         myUserId: String? = "",
+        errorMessage: String = "",
         onRegisterUser: () -> Unit = {},
     ){
         when(event){
             RegisterUserEvents.InitRegisterUserEvent -> {
-                registerUserEventStatus.value = RegisterUserStatus.INIT
+                _registerUserEventStatus.value = RegisterUserStatus.INIT
             }
             RegisterUserEvents.LoadingEvent -> {
-                registerUserEventStatus.value = RegisterUserStatus.LOADING
+                _registerUserEventStatus.value = RegisterUserStatus.LOADING
                 createUser(
                     displayName = displayName,
                     email = email,
                     password = password,
                     activity = activity,
                     context = context,
-                    onRegisterUser = onRegisterUser
+                    onRegisterUser = onRegisterUser,
+                    imageUri = imageUri
                 )
             }
             RegisterUserEvents.DoneEvent -> {
-                registerUserEventStatus.value = RegisterUserStatus.DONE
+                _registerUserEventStatus.value = RegisterUserStatus.DONE
                 Handler(Looper.getMainLooper()).postDelayed({
                     CmuToast.createFancyToast(
                         context,
@@ -90,13 +105,13 @@ class RegisterUserScreenViewModel @Inject constructor(cmuDataStoreRepository: Cm
                 }
             }
             RegisterUserEvents.ErrorEvent -> {
-                registerUserEventStatus.value = RegisterUserStatus.ERROR
+                _registerUserEventStatus.value = RegisterUserStatus.ERROR
                 Handler(Looper.getMainLooper()).postDelayed({
                     CmuToast.createFancyToast(
                         context,
                         activity,
                         "Register User",
-                        "Email already exists",
+                        errorMessage,
                         CmuToastStyle.ERROR,
                         CmuToastDuration.SHORT
                     )
@@ -105,6 +120,38 @@ class RegisterUserScreenViewModel @Inject constructor(cmuDataStoreRepository: Cm
                     activity, context, RegisterUserEvents.InitRegisterUserEvent,
                 )
             }
+
+        }
+    }
+
+    fun onProfilePictureEventTriggered(
+        event: ProfilePictureEvents,
+        imageUri: Uri
+    ){
+        when(event){
+            ProfilePictureEvents.Init -> {
+                _profilePictureEventStatus.value = ProfilePictureStatus.INIT
+            }
+
+            ProfilePictureEvents.DoneEvent -> {
+                _profilePictureEventStatus.value = ProfilePictureStatus.DONE
+            }
+            ProfilePictureEvents.ErrorEvent -> {
+                _profilePictureEventStatus.value = ProfilePictureStatus.ERROR
+            }
+            ProfilePictureEvents.LoadingEvent -> {
+                _profilePictureEventStatus.value = ProfilePictureStatus.LOADING
+                Timber.tag(tag).d("ImageURI: $imageUri")
+            }
+        }
+    }
+
+    fun changeUserImage(userID: String, byteArray: ByteArray) {
+        storageRepository.updateUserProfileImage(userID, byteArray) { result: Result<Uri> ->
+            onResult(null, result)
+            if (result is Result.Success) {
+                dbRepository.updateUserProfileImageUrl(userID, result.data.toString())
+            }
         }
     }
 
@@ -112,6 +159,7 @@ class RegisterUserScreenViewModel @Inject constructor(cmuDataStoreRepository: Cm
         displayName: String,
         email: String,
         password: String,
+        imageUri: Uri?,
         activity: Activity?,
         context: Context,
         onRegisterUser: () -> Unit
@@ -121,11 +169,43 @@ class RegisterUserScreenViewModel @Inject constructor(cmuDataStoreRepository: Cm
         authRepository.createUser(createUser) { result: Result<FirebaseUser> ->
             onResult(null, result)
             if (result is Result.Success) {
-                dbRepository.updateNewUser(User().apply {
-                    info.id = result.data?.uid.toString()
-                    info.displayName = createUser.displayName
-                    info.email = createUser.email
-                })
+                result.data?.uid?.let {uid ->
+//                    Timber.tag(tag).d("ImageByteArray : ${convertFileToByteArray(context, imageUri)}")
+                    if(imageUri != null){
+                        storageRepository.updateUserProfileImage(
+                            uid,
+                            byteArray = convertFileToByteArray(context, imageUri)
+                        ) { uploadResult: Result<Uri> ->
+                            onResult(null, uploadResult)
+                            if (uploadResult is Result.Success) {
+                                dbRepository.updateNewUser(User().apply {
+                                    info.id = uid
+                                    info.displayName = createUser.displayName
+                                    info.email = createUser.email
+                                    info.profileImageUrl = uploadResult.data.toString()
+                                })
+                            } else if (uploadResult is Result.Error) {
+                                uploadResult.msg?.let {
+                                    onEventTriggered(
+                                        activity = activity,
+                                        context = context,
+                                        event = RegisterUserEvents.ErrorEvent,
+                                        onRegisterUser = onRegisterUser,
+                                        errorMessage = it
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    else{
+                        dbRepository.updateNewUser(User().apply {
+                            info.id = uid
+                            info.displayName = createUser.displayName
+                            info.email = createUser.email
+                        })
+                    }
+                }
+
 //                saveUserId(result.data?.uid.toString())
                 onEventTriggered(
                     activity = activity,
@@ -136,12 +216,15 @@ class RegisterUserScreenViewModel @Inject constructor(cmuDataStoreRepository: Cm
                 )
             }
             else if (result is Result.Error) {
-                onEventTriggered(
-                    activity = activity,
-                    context = context,
-                    event = RegisterUserEvents.ErrorEvent,
-                    onRegisterUser = onRegisterUser,
-                )
+                result.msg?.let {
+                    onEventTriggered(
+                        activity = activity,
+                        context = context,
+                        event = RegisterUserEvents.ErrorEvent,
+                        onRegisterUser = onRegisterUser,
+                        errorMessage = it
+                    )
+                }
             }
             else {
 //                Timber.tag(tag).d("Still Loading")
@@ -158,5 +241,12 @@ class RegisterUserScreenViewModel @Inject constructor(cmuDataStoreRepository: Cm
         object LoadingEvent: RegisterUserEvents()
         object ErrorEvent: RegisterUserEvents()
         object DoneEvent: RegisterUserEvents()
+    }
+
+    sealed class ProfilePictureEvents(){
+        object Init: ProfilePictureEvents()
+        object LoadingEvent: ProfilePictureEvents()
+        object ErrorEvent: ProfilePictureEvents()
+        object DoneEvent: ProfilePictureEvents()
     }
 }
