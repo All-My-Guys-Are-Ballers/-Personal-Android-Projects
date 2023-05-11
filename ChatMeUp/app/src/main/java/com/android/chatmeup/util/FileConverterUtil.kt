@@ -12,7 +12,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-const val MAX_FILE_SIZE = 500000
+const val MAX_FILE_SIZE = 150000
 
 fun convertFileToByteArray(context: Context, uri: Uri): ByteArray {
     val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
