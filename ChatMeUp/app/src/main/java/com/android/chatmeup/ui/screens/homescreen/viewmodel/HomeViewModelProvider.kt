@@ -7,10 +7,11 @@
  *
  */
 
-package com.android.chatmeup.ui.screens.homescreen
+package com.android.chatmeup.ui.screens.homescreen.viewmodel
 
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.chatmeup.ui.screens.homescreen.viewmodel.HomeViewModel
 
 @Composable
 fun homeViewModelProvider(

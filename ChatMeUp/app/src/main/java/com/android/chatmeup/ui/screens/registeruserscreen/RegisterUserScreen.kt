@@ -102,20 +102,20 @@ fun RegisterUserScreen(
         }
     }
 
-    val email: MutableState<TextFieldValue> = remember {
-        mutableStateOf(TextFieldValue(""))
+    var email: String by remember {
+        mutableStateOf("")
     }
 
-    val displayName: MutableState<TextFieldValue> = remember {
-        mutableStateOf(TextFieldValue(""))
+    var displayName: String by remember {
+        mutableStateOf("")
     }
 
-    val password: MutableState<TextFieldValue> = remember {
-        mutableStateOf(TextFieldValue(""))
+    var password: String by remember {
+        mutableStateOf("")
     }
 
-    val confirmPassword: MutableState<TextFieldValue> = remember {
-        mutableStateOf(TextFieldValue(""))
+    var confirmPassword: String by remember {
+        mutableStateOf("")
     }
 
     val isEmailValid: MutableState<Boolean> = remember {
@@ -220,7 +220,7 @@ fun RegisterUserScreen(
                 text = displayName,
                 imeAction = ImeAction.Next,
                 onValueChanged = { value ->
-                    displayName.value = value
+                    displayName = value
                 },
             )
             CmuInputTextField(
@@ -230,8 +230,8 @@ fun RegisterUserScreen(
                 text = email,
                 imeAction = ImeAction.Next,
                 onValueChanged = { value ->
-                    email.value = value
-                    isEmailValid.value = email.value.text.isEmailValid()
+                    email = value
+                    isEmailValid.value = email.isEmailValid()
                 },
             )
             CmuInputTextField(
@@ -242,8 +242,8 @@ fun RegisterUserScreen(
                 text = password,
                 imeAction = ImeAction.Next,
                 onValueChanged = { value ->
-                    password.value = value
-                    isStrongPassword.value = isStrongPassword(password.value.text)
+                    password = value
+                    isStrongPassword.value = isStrongPassword(password)
                 },
                 trailingIcon = {
                     Icon(imageVector = if (isPasswordVisible.value) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
@@ -263,8 +263,8 @@ fun RegisterUserScreen(
                 text = confirmPassword,
                 imeAction = ImeAction.Done,
                 onValueChanged = { value ->
-                    confirmPassword.value = value
-                    isStrongPassword.value = isStrongPassword(password.value.text)
+                    confirmPassword = value
+                    isStrongPassword.value = isStrongPassword(password)
                 },
                 visualTransformation = PasswordVisualTransformation(),
             )
@@ -332,7 +332,7 @@ fun RegisterUserScreen(
 //                            duration = CmuToastDuration.LONG
 //                        )
 //                    }
-                else if (password.value != confirmPassword.value) {
+                else if (password != confirmPassword) {
                         CmuToast.createFancyToast(
                             context = context,
                             activity = activity,
@@ -346,10 +346,10 @@ fun RegisterUserScreen(
                             activity,
                             context,
                             RegisterUserScreenViewModel.RegisterUserEvents.LoadingEvent,
-                            email = email.value.text,
-                            password = password.value.text,
+                            email = email,
+                            password = password,
                             imageUri = photoURI,
-                            displayName = displayName.value.text,
+                            displayName = displayName,
                             onRegisterUser = onBackClick
                         )
                     }

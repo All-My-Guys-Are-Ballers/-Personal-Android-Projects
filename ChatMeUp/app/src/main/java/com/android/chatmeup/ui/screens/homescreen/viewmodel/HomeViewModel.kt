@@ -1,4 +1,4 @@
-package com.android.chatmeup.ui.screens.homescreen
+package com.android.chatmeup.ui.screens.homescreen.viewmodel
 
 import android.app.Activity
 import android.content.Context
@@ -292,7 +292,7 @@ class HomeViewModel @AssistedInject constructor(
                     dbRepository.updateNewNotification(uid, UserNotification(myUserId))
                     onAddContactEventTriggered(
                         AddContactEvents.Success,
-                        context, activity, errorMsg = "User does not have a ChatMeUp Account"
+                        context, activity
                     )
                 }
                 else {
@@ -305,11 +305,13 @@ class HomeViewModel @AssistedInject constructor(
                 }
             }
             else if(result is Result.Error){
-                onAddContactEventTriggered(
-                    AddContactEvents.Error,
-                    context, activity,
-                    errorMsg = "Unable to connect"
-                )
+                result.msg?.let {
+                    onAddContactEventTriggered(
+                        AddContactEvents.Error,
+                        context, activity,
+                        errorMsg = it
+                    )
+                }
             }
         }
     }

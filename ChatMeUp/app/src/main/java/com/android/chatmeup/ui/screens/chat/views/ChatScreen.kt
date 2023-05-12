@@ -23,6 +23,7 @@ import androidx.compose.material.MaterialTheme.colors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -50,6 +51,7 @@ import com.android.chatmeup.ui.screens.chat.viewmodel.ChatViewModel
 import com.android.chatmeup.ui.screens.chat.viewmodel.chatViewModelProvider
 import com.android.chatmeup.ui.screens.components.CmuInputTextField
 import com.android.chatmeup.ui.screens.components.ProfilePicture
+import com.android.chatmeup.ui.theme.neutral_disabled
 import com.android.chatmeup.ui.theme.seed
 import com.android.chatmeup.util.epochToHoursAndMinutes
 import kotlinx.coroutines.CoroutineScope
@@ -215,7 +217,7 @@ fun ChatBottomBar(
 ) {
     Surface(color = MaterialTheme.colorScheme.background) {
         Row(
-            modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
+            modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { /*TODO*/ }) {
@@ -227,18 +229,25 @@ fun ChatBottomBar(
             }
 
             CmuInputTextField(
+                label = "",
+                placeholder = "Message",
                 modifier = Modifier
                     .weight(1f),
                 paddingValues = PaddingValues(),
-                label = "",
-                placeholder = "Message",
+                singleLine = false,
+                maxLines = 3,
                 text = messageText,
+                shape = RoundedCornerShape(10),
                 onValueChanged = {
                     viewModel.newMessageText.value = it
                 },
-                singleLine = false,
-                maxLines = 3,
+//        trailingIcon =
+//        {
+//            Icon(imageVector = Icons.Default.Cancel, contentDescription = "Cancel Search")
+//        },
+//                onDone = { keyboardState?.hide() },
             )
+
             IconButton(onClick = {
                 viewModel.sendMessagePressed()
             }) {

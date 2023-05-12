@@ -20,10 +20,10 @@ import com.android.chatmeup.data.datastore.CmuDataStoreRepository
 import com.android.chatmeup.data.db.repository.DatabaseRepository
 import com.android.chatmeup.ui.CmuApp
 import com.android.chatmeup.ui.screens.chat.viewmodel.ChatViewModel
-import com.android.chatmeup.ui.screens.homescreen.HomeViewModel
+import com.android.chatmeup.ui.screens.homescreen.viewmodel.HomeViewModel
 import com.android.chatmeup.ui.theme.ChatMeUpTheme
-import com.android.chatmeup.ui.theme.cmuDarkBlue
-import com.android.chatmeup.ui.theme.cmuOffWhite
+import com.android.chatmeup.ui.theme.md_theme_dark_background
+import com.android.chatmeup.ui.theme.md_theme_light_background
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -75,8 +75,8 @@ class MainActivity : ComponentActivity() {
             val isDarkTheme = isSystemInDarkTheme()
             LaunchedEffect(isSystemInDarkTheme()) {
                 systemUiController.setStatusBarColor(
-                    color = if(isDarkTheme) cmuDarkBlue else cmuOffWhite,
-                    darkIcons = false
+                    color = if(isDarkTheme) md_theme_dark_background else md_theme_light_background,
+                    darkIcons = !isDarkTheme
                 )
             }
             ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content)) { view, insets ->

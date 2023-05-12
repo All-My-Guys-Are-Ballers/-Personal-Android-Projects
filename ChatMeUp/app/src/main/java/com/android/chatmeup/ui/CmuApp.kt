@@ -1,16 +1,13 @@
 package com.android.chatmeup.ui
 
-import android.app.Activity
-import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.android.chatmeup.CmuApplication
 import com.android.chatmeup.navigation.CmuNavHost
-import com.android.chatmeup.ui.screens.homescreen.HomeDestination
+import com.android.chatmeup.ui.screens.homescreen.navigation.HomeDestination
 import com.android.chatmeup.ui.screens.loginscreen.LoginDestination
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase

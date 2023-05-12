@@ -12,12 +12,14 @@ import androidx.navigation.compose.NavHost
 import com.android.chatmeup.MainActivity
 import com.android.chatmeup.ui.screens.chat.navigation.ChatDestination
 import com.android.chatmeup.ui.screens.chat.navigation.chatGraph
-import com.android.chatmeup.ui.screens.homescreen.HomeDestination
-import com.android.chatmeup.ui.screens.homescreen.homeGraph
+import com.android.chatmeup.ui.screens.homescreen.navigation.HomeDestination
+import com.android.chatmeup.ui.screens.homescreen.navigation.homeGraph
 import com.android.chatmeup.ui.screens.loginscreen.LoginDestination
 import com.android.chatmeup.ui.screens.loginscreen.loginGraph
 import com.android.chatmeup.ui.screens.registeruserscreen.RegisterUserDestination
 import com.android.chatmeup.ui.screens.registeruserscreen.registerUserGraph
+import com.android.chatmeup.ui.screens.settings.navigation.SettingsDestination
+import com.android.chatmeup.ui.screens.settings.navigation.settingsGraph
 import dagger.hilt.android.EntryPointAccessors
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -71,7 +73,12 @@ fun CmuNavHost(
             },
             onNavigateToLogin = {backStackEntry->
                 onNavigateToDestination(backStackEntry, LoginDestination, LoginDestination.route)
-            }
+            },
+            onNavigateToSettings = {backStackEntry ->
+                onNavigateToDestination(backStackEntry, SettingsDestination, LoginDestination.route)
+
+            },
+
         )
 
         chatGraph(
@@ -81,6 +88,10 @@ fun CmuNavHost(
                 context as Activity, MainActivity.ViewModelFactoryProvider::class.java
             ).chatViewModelFactory(),
             onBackClicked = onBackClick
+        )
+
+        settingsGraph(
+            context, activity, onBackClick
         )
     }
 }

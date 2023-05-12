@@ -47,12 +47,12 @@ fun LoginScreen(
 
     val loginViewState by loginScreenViewModel.loginEventStatus.collectAsState()
 
-    val email: MutableState<TextFieldValue>  = remember {
-        mutableStateOf(TextFieldValue(""))
+    var email  by remember {
+        mutableStateOf("")
     }
 
-    val password: MutableState<TextFieldValue>  = remember {
-        mutableStateOf(TextFieldValue(""))
+    var password  by remember {
+        mutableStateOf("")
     }
 
     val isEmailValid: MutableState<Boolean> = remember {
@@ -101,8 +101,8 @@ fun LoginScreen(
                 text = email,
                 imeAction = ImeAction.Next,
                 onValueChanged = {value ->
-                    email.value = value
-                    isEmailValid.value = email.value.text.isEmailValid()
+                    email = value
+                    isEmailValid.value = email.isEmailValid()
                 },
             )
             CmuInputTextField(
@@ -113,8 +113,8 @@ fun LoginScreen(
                 text = password,
                 imeAction = ImeAction.Done,
                 onValueChanged = {value ->
-                    password.value = value
-                    isStrongPassword.value = isStrongPassword(password.value.text)
+                    password = value
+                    isStrongPassword.value = isStrongPassword(password)
                 },
                 trailingIcon = {
                     Icon(imageVector = if(isPasswordVisible.value) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
@@ -139,8 +139,8 @@ fun LoginScreen(
                         activity,
                         context,
                         LoginScreenViewModel.LoginEvents.LoadingEvent,
-                        email = email.value.text,
-                        password = password.value.text,
+                        email = email,
+                        password = password,
                         onLoggedIn,
                     )
                     else {CmuToast.createFancyToast(
