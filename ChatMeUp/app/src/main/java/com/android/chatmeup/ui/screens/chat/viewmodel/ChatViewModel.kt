@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import com.android.chatmeup.data.Result
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
 import com.android.chatmeup.data.db.entity.Chat
+import com.android.chatmeup.data.db.entity.ChatInfo
 import com.android.chatmeup.data.db.entity.Message
 import com.android.chatmeup.data.db.entity.User
 import com.android.chatmeup.data.db.entity.UserInfo
@@ -60,11 +61,26 @@ class ChatViewModel @AssistedInject constructor(
     private fun checkAndUpdateLastMessageSeen() {
         dbRepository.loadChat(chatId) { result: Result<Chat> ->
             if (result is Result.Success && result.data != null) {
-                result.data.lastMessage.let {
-                    if (!it.seen && it.senderID != myUserId) {
-                        it.seen = true
+                result.data.let {
+                    if (!it.lastMessage.seen && it.lastMessage.senderID != myUserId) {
+                        it.lastMessage.seen = true
+                        it.info.no_of_unread_messages = 0
                         dbRepository.updateChatLastMessage(chatId, it)
                     }
+                }
+            }
+        }
+    }
+
+
+    private fun checkAndUpdateUnreadMessages(message: Message) {
+        dbRepository.loadChat(chatId) { result: Result<Chat> ->
+            if (result is Result.Success && result.data != null) {
+                result.data.let {
+                    val chat = it.apply {
+                        it.lastMessage = message
+                        it.info.no_of_unread_messages++ }
+                    dbRepository.updateChatLastMessage(chatId, chat)
                 }
             }
         }
@@ -93,8 +109,9 @@ class ChatViewModel @AssistedInject constructor(
     fun sendMessagePressed() {
         if (!newMessageText.value.isNullOrBlank()) {
             val newMsg = Message(myUserId, newMessageText.value!!)
+//            val chat = Chat(lastMessage = newMsg, info = ChatInfo(chatId, ))
             dbRepository.updateNewMessage(chatId, newMsg)
-            dbRepository.updateChatLastMessage(chatId, newMsg)
+            checkAndUpdateUnreadMessages(newMsg)
             newMessageText.value = null
             viewModelScope.launch{
                 if(lazyListState.value.layoutInfo.totalItemsCount>=1){

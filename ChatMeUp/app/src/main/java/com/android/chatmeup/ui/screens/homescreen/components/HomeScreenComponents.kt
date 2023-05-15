@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Circle
@@ -62,6 +63,7 @@ import com.android.chatmeup.ui.screens.components.CmuInputTextField
 import com.android.chatmeup.ui.screens.components.ProfilePicture
 import com.android.chatmeup.ui.screens.homescreen.viewmodel.AddContactEventState
 import com.android.chatmeup.ui.screens.homescreen.viewmodel.HomeViewModel
+import com.android.chatmeup.ui.theme.brand_color
 import com.android.chatmeup.ui.theme.cmuDarkBlue
 import com.android.chatmeup.ui.theme.cmuOffWhite
 import com.android.chatmeup.ui.theme.md_theme_dark_onPrimaryContainer
@@ -124,12 +126,21 @@ fun ChatListItem(
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 if(!item.mChat.lastMessage.seen && item.mChat.lastMessage.senderID == item.mUserInfo.id){
-                    Icon(
-                        modifier = Modifier.size(12.dp),
-                        imageVector = Icons.Default.Circle,
-                        contentDescription = "Unread text from ${item.mUserInfo.displayName}",
-                        tint = seed
-                    )
+                    Card(
+                        shape = CircleShape,
+                        colors = CardDefaults.cardColors(
+                            containerColor = brand_color
+                        )
+                    ) {
+                        Text(
+                            text = item.mChat.info.no_of_unread_messages.toString(),
+                            modifier = Modifier.padding(
+                                start = 8.dp, end = 8.dp, top = 4.dp, bottom = 4.dp
+                            ),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = seed
+                        )
+                    }
                 }
             }
         }

@@ -41,12 +41,12 @@ class DatabaseRepository {
         firebaseDatabaseService.updateNewNotification(otherUserID, userNotification)
     }
 
-    fun updateChatLastMessage(chatID: String, message: Message) {
-        firebaseDatabaseService.updateLastMessage(chatID, message)
+    fun updateChatLastMessage(chatID: String, chat: Chat) {
+        firebaseDatabaseService.updateLastMessage(chatID, chat)
     }
 
-    fun updateUnreadMessages(chatID: String, isFirst: Boolean, value: Int){
-        firebaseDatabaseService.updateUnreadMessages(chatID, isFirst, value)
+    fun updateUnreadMessages(chatID: String, value: Int){
+        firebaseDatabaseService.updateUnreadMessages(chatID, value)
     }
 
     fun updateNewChat(chat: Chat){
@@ -99,6 +99,12 @@ class DatabaseRepository {
     fun loadChat(chatID: String, b: ((Result<Chat>) -> Unit)) {
         firebaseDatabaseService.loadChatTask(chatID).addOnSuccessListener {
             b.invoke(Result.Success(wrapSnapshotToClass(Chat::class.java, it)))
+        }.addOnFailureListener { b.invoke(Result.Error(it.message)) }
+    }
+
+    fun loadChatInfo(chatID: String, b:((Result<ChatInfo>) -> Unit)){
+        firebaseDatabaseService.loadChatInfoTask(chatID).addOnSuccessListener {
+            b.invoke(Result.Success(wrapSnapshotToClass(ChatInfo::class.java, it)))
         }.addOnFailureListener { b.invoke(Result.Error(it.message)) }
     }
 

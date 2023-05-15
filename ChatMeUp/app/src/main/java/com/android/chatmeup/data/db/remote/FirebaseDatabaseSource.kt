@@ -160,13 +160,12 @@ class FirebaseDataSource {
         refToPath("users/$userID/info/online").setValue(status)
     }
 
-    fun updateLastMessage(chatID: String, message: Message) {
-        refToPath("chats/$chatID/lastMessage").setValue(message)
+    fun updateLastMessage(chatID: String, chat: Chat) {
+        refToPath("chats/$chatID").setValue(chat)
     }
 
-    fun updateUnreadMessages(chatID: String, isFirst:Boolean, value: Int){
-        if (isFirst){ refToPath("chats/$chatID/info/no_of_unread_messages_for_first_user").setValue(value) }
-        else {refToPath("chats/$chatID/info/no_of_unread_messages_for_second_user").setValue(value) }
+    fun updateUnreadMessages(chatID: String, value: Int){
+        refToPath("chats/$chatID/info/no_of_unread_messages").setValue(value)
     }
 
     fun updateNewFriend(myUser: UserFriend, otherUser: UserFriend) {
@@ -233,6 +232,13 @@ class FirebaseDataSource {
         val src = TaskCompletionSource<DataSnapshot>()
         val listener = attachValueListenerToTaskCompletion(src)
         refToPath("users/$userID/info").addListenerForSingleValueEvent(listener)
+        return src.task
+    }
+
+    fun loadChatInfoTask(chatID: String): Task<DataSnapshot> {
+        val src = TaskCompletionSource<DataSnapshot>()
+        val listener = attachValueListenerToTaskCompletion(src)
+        refToPath("chats/$chatID/info").addListenerForSingleValueEvent(listener)
         return src.task
     }
 
