@@ -63,6 +63,8 @@ class HomeViewModel @AssistedInject constructor(
     private val _updatedUserNotification = MutableLiveData<UserInfo>()
     private val _updatedChatWithUserInfo = MutableLiveData<ChatWithUserInfo>()
 
+    val myUpdatedInfo = MutableLiveData<UserInfo>()
+
 
     val chatsList = MediatorLiveData<MutableList<ChatWithUserInfo>>()
     val notificationListWithUserInfo = MediatorLiveData<MutableList<UserInfo>>()
@@ -79,6 +81,7 @@ class HomeViewModel @AssistedInject constructor(
         this.notificationListWithUserInfo.addSource(_updatedUserNotification) { newNotification ->
             this.notificationListWithUserInfo.addNewItem(newNotification)
         }
+        loadAndObserveMyInfo()
         setupChats()
         loadAndObserveNotifications()
     }
@@ -90,6 +93,14 @@ class HomeViewModel @AssistedInject constructor(
 
     private fun setupChats() {
         loadAndObserveFriends()
+    }
+
+    private fun loadAndObserveMyInfo() {
+        val observer = FirebaseReferenceValueObserver()
+        firebaseReferenceObserverList.add(observer)
+        dbRepository.loadAndObserveUserInfo(myUserId, observer) { result: Result<UserInfo> ->
+            onResult(myUpdatedInfo, result)
+        }
     }
 
     private fun updateNotification(otherUserInfo: UserInfo, removeOnly: Boolean) {

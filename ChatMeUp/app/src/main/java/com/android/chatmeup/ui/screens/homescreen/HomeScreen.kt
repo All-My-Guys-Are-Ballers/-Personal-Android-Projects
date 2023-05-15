@@ -8,25 +8,34 @@ import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.ModalBottomSheetLayout
 import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.android.chatmeup.R
 import com.android.chatmeup.data.db.entity.UserInfo
 import com.android.chatmeup.data.model.ChatWithUserInfo
+import com.android.chatmeup.ui.screens.components.ProfilePicture
 import com.android.chatmeup.ui.screens.homescreen.components.BottomSheetScreen
 import com.android.chatmeup.ui.screens.homescreen.components.ChatListItem
 import com.android.chatmeup.ui.screens.homescreen.components.CmuSearchTextField
@@ -35,6 +44,7 @@ import com.android.chatmeup.ui.screens.homescreen.components.HomeTopBar
 import com.android.chatmeup.ui.screens.homescreen.components.SheetLayout
 import com.android.chatmeup.ui.screens.homescreen.viewmodel.HomeViewModel
 import com.android.chatmeup.ui.screens.homescreen.viewmodel.homeViewModelProvider
+import com.android.chatmeup.ui.theme.neutral_disabled
 import com.android.chatmeup.util.SharedPreferencesUtil
 import com.google.accompanist.pager.*
 import com.google.firebase.auth.ktx.auth
@@ -60,6 +70,8 @@ fun HomeScreen(
         factory = factory,
         myUserId = myUserID!!
     )
+
+    val myUserInfo by viewModel.myUpdatedInfo.observeAsState()
 
     val chatsList by viewModel.chatsList.observeAsState()
 
@@ -214,7 +226,12 @@ fun HomeScreen(
                         onNavigateToChat = onNavigateToChat
                     )
 
-                    2 -> Text(text = "More")
+                    2 -> MoreScreen(
+                        modifier = Modifier.padding(it),
+                        myUserInfo = myUserInfo
+                    ) {
+
+                    }
                 }
             }
 
@@ -252,6 +269,35 @@ fun ChatsScreen(
     }
 }
 
+@Composable
+fun MoreScreen(
+    modifier: Modifier = Modifier,
+    myUserInfo: UserInfo?,
+    onNavigateToEditProfile: () -> Unit,
+){
+    Surface(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(top = 20.dp, start = 20.dp, end = 0.dp),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column() {
+            myUserInfo?.let {
+                UserInfoWithProfilePicture(myUserInfo = it) {
+                    onNavigateToEditProfile()
+                }
+            }
+            Spacer(modifier = Modifier.height(25.dp))
+            MoreItem() {
+                
+            }
+            MoreItem(Icons.Default.Security, "Security") {
+                
+            }
+        }
+    }
+}
+
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ChatList(
@@ -259,7 +305,6 @@ fun ChatList(
     myUserId: String,
     onNavigateToChat: (String) -> Unit
 ){
-//    list?.sortBy { it.mChat.lastMessage.epochTimeMs }
     LazyColumn(
         modifier = Modifier.padding(start = 25.dp, end = 25.dp),
         verticalArrangement = Arrangement.spacedBy(25.dp)
@@ -272,6 +317,93 @@ fun ChatList(
                     onNavigateToChat = onNavigateToChat
                 )
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UserInfoWithProfilePicture(
+    myUserInfo: UserInfo,
+    onNavigateToEditProfile: () -> Unit,
+){
+    Card(onClick = {
+        onNavigateToEditProfile()
+    },
+        shape = RectangleShape,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)
+    ) {
+        Row() {
+            ProfilePicture(
+                imageUrl = myUserInfo.profileImageUrl,
+                size = 60.dp,
+                shape = CircleShape
+            )
+            Spacer(modifier = Modifier.width(20.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = myUserInfo.displayName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = myUserInfo.email,
+                    overflow = TextOverflow.Ellipsis,
+                    color = neutral_disabled,
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = 1
+                )
+            }
+            IconButton(onClick = { onNavigateToEditProfile() }) {
+                Icon(
+                    imageVector = Icons.Default.ArrowForwardIos,
+                    contentDescription = "",
+                    modifier = Modifier.size(15.dp)
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MoreItem(
+    leadingIcon: ImageVector = Icons.Outlined.Person,
+    text: String = "Account",
+    onClick: () -> Unit,
+){
+    Card(
+        onClick = { onClick() },
+        shape = RectangleShape,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)
+    ){
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = leadingIcon,
+                contentDescription = null,
+                modifier = Modifier.size(27.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                modifier = Modifier.weight(1f),
+                text = text,
+                fontWeight = FontWeight.Medium,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1
+            )
+            IconButton(onClick = { onClick() }) {
+                Icon(
+                    imageVector = Icons.Default.ArrowForwardIos,
+                    contentDescription = "",
+                    modifier = Modifier.size(15.dp)
+                )
+            }
+
         }
     }
 }

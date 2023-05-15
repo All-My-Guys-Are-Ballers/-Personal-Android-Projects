@@ -163,7 +163,7 @@ fun MessageItem(
                             if(message.seen) "•Read" else "•Sent"
                         } else ""
                     }",
-                    color = if(isSender) Color.White else MaterialTheme.colorScheme.onBackground,
+                    color = neutral_disabled,
                     style = MaterialTheme.typography.labelSmall
                 )
             }

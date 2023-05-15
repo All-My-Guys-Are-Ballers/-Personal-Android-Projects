@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
@@ -36,6 +37,7 @@ fun ProfilePicture(
     imageUrl: String,
     isOnline: Boolean = false,
     size: Dp = 60.dp,
+    shape: Shape = RoundedCornerShape(30),
 ){
     BadgedBox(
         modifier = Modifier
@@ -66,7 +68,7 @@ fun ProfilePicture(
         if(imageUrl.isNotBlank()){
             Image(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(30))
+                    .clip(shape)
                     .fillMaxSize(),
                 contentScale = ContentScale.Crop,
                 painter = rememberAsyncImagePainter(model = Uri.parse(imageUrl)),
