@@ -232,7 +232,8 @@ fun ChatBottomBar(
                 label = "",
                 placeholder = "Message",
                 modifier = Modifier
-                    .weight(1f),
+                    .weight(1f)
+                    .height(40.dp),
                 paddingValues = PaddingValues(),
                 singleLine = false,
                 maxLines = 3,

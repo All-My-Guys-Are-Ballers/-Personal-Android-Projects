@@ -25,6 +25,8 @@ import com.android.chatmeup.ui.theme.ChatMeUpTheme
 import com.android.chatmeup.ui.theme.md_theme_dark_background
 import com.android.chatmeup.ui.theme.md_theme_light_background
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.AndroidEntryPoint
@@ -101,11 +103,11 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         chatMeUpApp.setCurrentActivity(this)
-        dbRepository.updateOnlineStatus(chatMeUpApp.myUserID, true)
+        if(Firebase.auth.currentUser != null){ dbRepository.updateOnlineStatus(chatMeUpApp.myUserID, true) }
     }
     override fun onPause() {
         super.onPause()
         chatMeUpApp.setCurrentActivity(this)
-        dbRepository.updateOnlineStatus(chatMeUpApp.myUserID, false)
+        if(Firebase.auth.currentUser != null){ dbRepository.updateOnlineStatus(chatMeUpApp.myUserID, false) }
     }
 }

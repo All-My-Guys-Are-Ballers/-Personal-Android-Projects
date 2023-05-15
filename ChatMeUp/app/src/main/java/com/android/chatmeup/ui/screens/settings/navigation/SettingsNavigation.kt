@@ -20,7 +20,7 @@ fun NavGraphBuilder.settingsGraph(
     onBackClick: () -> Unit,
 ) {
     composable(
-        route = RegisterUserDestination.route
+        route = SettingsDestination.route
     ) { navBackStackEntry ->
         SettingsScreen(
             onBackClick = onBackClick

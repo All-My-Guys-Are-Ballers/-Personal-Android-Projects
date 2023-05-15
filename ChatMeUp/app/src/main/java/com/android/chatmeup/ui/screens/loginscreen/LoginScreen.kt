@@ -30,7 +30,6 @@ import com.android.chatmeup.util.isEmailValid
 import com.android.chatmeup.util.isStrongPassword
 import com.google.accompanist.insets.navigationBarsWithImePadding
 
-@OptIn(ExperimentalTextApi::class)
 @Composable
 fun LoginScreen(
     context: Context,

@@ -21,6 +21,7 @@ import com.android.chatmeup.data.Result
 import com.android.chatmeup.data.db.entity.Message
 import com.android.chatmeup.data.db.entity.User
 import com.android.chatmeup.data.db.entity.UserNotification
+import com.android.chatmeup.data.db.repository.AuthRepository
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
@@ -57,6 +58,7 @@ class HomeViewModel @AssistedInject constructor(
     private val _addContactEventState = MutableStateFlow(AddContactEventState.DO_NOTHING)
     val addContactEventState = _addContactEventState.asStateFlow()
 
+    private val authRepository: AuthRepository = AuthRepository()
     private val dbRepository: DatabaseRepository = DatabaseRepository()
     private val firebaseReferenceObserverList = ArrayList<FirebaseReferenceValueObserver>()
 
@@ -325,6 +327,10 @@ class HomeViewModel @AssistedInject constructor(
                 }
             }
         }
+    }
+
+    fun logout(){
+        authRepository.logoutUser()
     }
 
     sealed class HomeEvents(){

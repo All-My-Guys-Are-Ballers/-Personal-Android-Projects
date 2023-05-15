@@ -15,6 +15,7 @@ import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowForwardIos
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.outlined.Person
@@ -228,7 +229,11 @@ fun HomeScreen(
 
                     2 -> MoreScreen(
                         modifier = Modifier.padding(it),
-                        myUserInfo = myUserInfo
+                        myUserInfo = myUserInfo,
+                        onSignOutClicked = {
+                            viewModel.logout()
+                            onNavigateToLogin()
+                        }
                     ) {
 
                     }
@@ -273,6 +278,7 @@ fun ChatsScreen(
 fun MoreScreen(
     modifier: Modifier = Modifier,
     myUserInfo: UserInfo?,
+    onSignOutClicked: () -> Unit,
     onNavigateToEditProfile: () -> Unit,
 ){
     Surface(
@@ -293,6 +299,9 @@ fun MoreScreen(
             }
             MoreItem(Icons.Default.Security, "Security") {
                 
+            }
+            MoreItem(Icons.Default.Logout, "Sign Out") {
+                onSignOutClicked()
             }
         }
     }
