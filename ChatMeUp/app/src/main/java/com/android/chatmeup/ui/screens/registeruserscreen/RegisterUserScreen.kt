@@ -9,7 +9,6 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,19 +26,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.MaterialTheme.colors
 import androidx.compose.material.ModalBottomSheetLayout
 import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Camera
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -52,10 +46,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -72,19 +66,17 @@ import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
 import com.android.chatmeup.ui.screens.components.CmuDarkButton
 import com.android.chatmeup.ui.screens.components.CmuInputTextField
+import com.android.chatmeup.ui.screens.components.UploadFileOptionDialog
 import com.android.chatmeup.ui.theme.cmuBlue
-import com.android.chatmeup.ui.theme.neutral_disabled
-import com.android.chatmeup.ui.theme.seed
 import com.android.chatmeup.util.createTempImageFile
 import com.android.chatmeup.util.isEmailValid
 import com.android.chatmeup.util.isStrongPassword
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.Objects
 
 @RequiresApi(Build.VERSION_CODES.R)
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class,
+@OptIn(ExperimentalMaterial3Api::class,
     ExperimentalMaterialApi::class
 )
 @Composable
@@ -96,17 +88,19 @@ fun RegisterUserScreen(
 ){
     val registerUserViewState by viewModel.registerUserEventStatus.collectAsState()
 
-    val cameraPermissionState = rememberPermissionState(permission = Manifest.permission.CAMERA)
-    val storagePermissionState = rememberPermissionState(
-        permission = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
-    )
+    val scope = rememberCoroutineScope()
 
-    var photoURI: Uri? by remember {
+    val modalBottomSheetState =
+        rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden,
+            confirmValueChange = { it != ModalBottomSheetValue.HalfExpanded }
+        )
+
+    var photoURI: Uri? by rememberSaveable {
         mutableStateOf(null)
     }
 
-    var imageUploaded by remember {
-        mutableStateOf(false)
+    var newPhotoURI: Uri? by rememberSaveable {
+        mutableStateOf(null)
     }
 
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -120,7 +114,8 @@ fun RegisterUserScreen(
                     imageUri = it
                 )
             }
-            imageUploaded = true
+            photoURI = newPhotoURI
+            scope.launch{ modalBottomSheetState.hide() }
         }
     }
 
@@ -139,23 +134,55 @@ fun RegisterUserScreen(
         } else {
             photoURI = uri
             Timber.tag(TAG).d("Photo URI: $photoURI")
-            imageUploaded = true
+            scope.launch{ modalBottomSheetState.hide() }
         }
     }
 
-    var email: String by remember {
+    val requestCameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // Permission granted, launch the camera
+            if (newPhotoURI != null) {
+                context.contentResolver.delete(newPhotoURI!!, null)
+            }
+            newPhotoURI = FileProvider.getUriForFile(
+                context,
+                context.applicationContext.packageName + ".provider",
+                createTempImageFile(context)
+            )
+            cameraLauncher.launch(newPhotoURI)
+        } else {
+            // Permission denied, show an error message
+            CmuToast.createFancyToast(context, activity = activity, "Camera","Permission denied", CmuToastStyle.ERROR, CmuToastDuration.SHORT)
+        }
+    }
+
+    val requestStoragePermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+
+            storageLauncher.launch("image/*")
+        } else {
+            // Permission denied, show an error message
+            CmuToast.createFancyToast(context, activity = activity, "Storage","Permission denied", CmuToastStyle.ERROR, CmuToastDuration.SHORT)
+        }
+    }
+
+    var email: String by rememberSaveable {
         mutableStateOf("")
     }
 
-    var displayName: String by remember {
+    var displayName: String by rememberSaveable {
         mutableStateOf("")
     }
 
-    var password: String by remember {
+    var password: String by rememberSaveable {
         mutableStateOf("")
     }
 
-    var confirmPassword: String by remember {
+    var confirmPassword: String by rememberSaveable {
         mutableStateOf("")
     }
 
@@ -175,17 +202,9 @@ fun RegisterUserScreen(
         mutableStateOf(false)
     }
 
-    val modalBottomSheetState =
-        rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden,
-            confirmValueChange = { it != ModalBottomSheetValue.HalfExpanded }
-        )
-
     var currentBottomSheet: BottomSheetScreen by remember{
         mutableStateOf(BottomSheetScreen.UploadImageOption)
     }
-
-    val scope = rememberCoroutineScope()
-
 
     ModalBottomSheetLayout(
         sheetState = modalBottomSheetState,
@@ -197,37 +216,12 @@ fun RegisterUserScreen(
                 activity = activity,
                 viewModel = viewModel,
                 onTakePictureClicked = {
-                    if (cameraPermissionState.hasPermission) {
-                            imageUploaded = false
-                            if (photoURI != null) {
-                                context.contentResolver.delete(photoURI!!, null)
-                            }
-                            photoURI = FileProvider.getUriForFile(
-                                context,
-                                context.applicationContext.packageName + ".provider",
-                                createTempImageFile(context)
-                            )
-                            cameraLauncher.launch(photoURI)
-                        } else {
-                            cameraPermissionState.launchPermissionRequest()
-                        } },
+                    requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                },
                 onUploadFromStorageClicked = {
-                    if (storagePermissionState.hasPermission) {
-                        Timber.tag(TAG).d("I have permission")
-                        imageUploaded = false
-//                        if (photoURI != null) {
-//                            context.contentResolver.delete(photoURI!!, null)
-//                        }
-//                        photoURI = FileProvider.getUriForFile(
-//                            context,
-//                            context.applicationContext.packageName + ".provider",
-//                            createTempImageFile(context)
-//                        )
-                        storageLauncher.launch("image/*")
-                    } else {
-                        Timber.tag(TAG).d("I don't have permission")
-                        storagePermissionState.launchPermissionRequest()
-                    }
+                    requestStoragePermissionLauncher.launch(
+                        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
+                    )
                 }
             )
         }
@@ -271,7 +265,7 @@ fun RegisterUserScreen(
                         }
                     }
                 ) {
-                    if (!imageUploaded) {
+                    if (Objects.isNull(photoURI)) {
                         Icon(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -467,57 +461,6 @@ fun RegisterUserScreen(
     }
 }
 
-@Composable
-fun UploadFileOptionDialog(
-    title: String,
-    onTakePictureClicked: () -> Unit,
-    onUploadFromStorageClicked: () -> Unit,
-    onDelete: (() -> Unit)? = null
-){
-    Column() {
-        Row() {
-            UploadFileOptionItem(
-                modifier = Modifier,
-                imageVector = Icons.Default.CameraAlt,
-                onClick = onTakePictureClicked
-            )
-            UploadFileOptionItem(
-                modifier = Modifier,
-                imageVector = Icons.Default.Photo,
-                onClick = onUploadFromStorageClicked
-            )
-        }
-    }
-}
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun UploadFileOptionItem(
-    modifier: Modifier = Modifier,
-    imageVector: ImageVector,
-    onClick: () -> Unit
-){
-    Card(
-        modifier = modifier
-            .padding(18.dp)
-            .size(50.dp),
-        shape = CircleShape,
-        colors = CardDefaults.cardColors(
-          containerColor = MaterialTheme.colorScheme.background,
-          disabledContainerColor = MaterialTheme.colorScheme.background,
-        ),
-        border = BorderStroke(1.dp, neutral_disabled),
-        onClick = onClick
-    ) {
-        Icon(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(15.dp),
-            imageVector = imageVector,
-            contentDescription = null,
-            tint = seed
-        )
-    }
-}
 
 @Composable
 fun SheetLayout(

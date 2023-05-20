@@ -91,6 +91,9 @@ dependencies {
     //pager
     implementation 'com.google.accompanist:accompanist-pager-indicators:0.27.1'
 
+    //placeholder
+    implementation 'com.google.accompanist:accompanist-placeholder:0.25.1'
+
     //permissions
     implementation 'com.google.accompanist:accompanist-permissions:0.23.1'
     

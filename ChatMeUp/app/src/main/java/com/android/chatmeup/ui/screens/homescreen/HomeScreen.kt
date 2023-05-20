@@ -23,6 +23,7 @@ import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -80,7 +81,7 @@ fun HomeScreen(
 
     val addContactEventState by viewModel.addContactEventState.collectAsState()
 
-    var searchText by remember { mutableStateOf("") }
+    var searchText by rememberSaveable { mutableStateOf("") }
 
     val pagerState = rememberPagerState(1)
 
@@ -88,7 +89,7 @@ fun HomeScreen(
 
     val modalBottomSheetState =
         rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden,
-            confirmValueChange = { it != ModalBottomSheetValue.HalfExpanded }
+            skipHalfExpanded = true
         )
 
     var currentBottomSheet: BottomSheetScreen by remember{

@@ -1,8 +1,13 @@
 package com.android.chatmeup.ui.screens.chat.views
 
+import android.Manifest
 import android.app.Activity
+import android.content.ContentValues
 import android.content.Context
+import android.net.Uri
 import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,14 +21,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.MaterialTheme.colors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBackIosNew
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -36,8 +37,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -47,16 +50,22 @@ import androidx.compose.ui.unit.dp
 import com.android.chatmeup.R
 import com.android.chatmeup.data.db.entity.Message
 import com.android.chatmeup.data.db.entity.UserInfo
+import com.android.chatmeup.ui.cmutoast.CmuToast
+import com.android.chatmeup.ui.cmutoast.CmuToastDuration
+import com.android.chatmeup.ui.cmutoast.CmuToastStyle
 import com.android.chatmeup.ui.screens.chat.viewmodel.ChatViewModel
 import com.android.chatmeup.ui.screens.chat.viewmodel.chatViewModelProvider
 import com.android.chatmeup.ui.screens.components.CmuInputTextField
 import com.android.chatmeup.ui.screens.components.ProfilePicture
+import com.android.chatmeup.ui.screens.components.TextImage
 import com.android.chatmeup.ui.theme.neutral_disabled
 import com.android.chatmeup.ui.theme.seed
 import com.android.chatmeup.util.epochToHoursAndMinutes
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberPermissionState
+import timber.log.Timber
 
+@OptIn(ExperimentalPermissionsApi::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ChatScreen(
@@ -83,6 +92,48 @@ fun ChatScreen(
 
     val lazyListState by viewModel.lazyListState.collectAsState()
 
+    val cameraPermissionState = rememberPermissionState(permission = Manifest.permission.CAMERA)
+    val storagePermissionState = rememberPermissionState(
+        permission = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
+    )
+
+    var photoURI: Uri? by rememberSaveable {
+        mutableStateOf(null)
+    }
+
+    var imageUploaded by remember {
+        mutableStateOf(false)
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture(),
+    ) { success ->
+        if (success) {
+            // Retrieve the captured image URI from the camera
+            imageUploaded = true
+        }
+    }
+
+    val storageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri == null) {
+            CmuToast.createFancyToast(
+                context = context,
+                activity = activity,
+                title = "Image Upload",
+                message = "You did not select any Image",
+                style = CmuToastStyle.WARNING,
+                duration = CmuToastDuration.SHORT
+            )
+        } else {
+            photoURI = uri
+            Timber.tag(ContentValues.TAG).d("Photo URI: $photoURI")
+            imageUploaded = true
+        }
+    }
+
+
     Scaffold(
         topBar = {
             ChatTopBar(
@@ -93,7 +144,8 @@ fun ChatScreen(
         bottomBar = {
             ChatBottomBar(
                 messageText = newMessageText ?: "",
-                viewModel = viewModel
+                viewModel = viewModel,
+                onAddItemClicked = {}
             )
         }
     ){paddingValues ->
@@ -128,6 +180,7 @@ fun MessageItem(
     message: Message
 ){
     val isSender = myUserId == message.senderID
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -152,6 +205,11 @@ fun MessageItem(
                 modifier = Modifier.padding(10.dp),
                 horizontalAlignment = if (isSender) Alignment.End else Alignment.Start
             ) {
+                if(message.imageUrl.isNotBlank()){
+                    TextImage(imageUri = Uri.parse(message.imageUrl)) {
+                        //Load Image Page
+                    }
+                }
                 Text(
                     text = message.text,
                     style = MaterialTheme.typography.bodyLarge,
@@ -214,13 +272,14 @@ fun ChatTopBar(otherUserInfo: UserInfo?,
 fun ChatBottomBar(
     messageText: String,
     viewModel: ChatViewModel,
+    onAddItemClicked: () -> Unit
 ) {
     Surface(color = MaterialTheme.colorScheme.background) {
         Row(
             modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { /*TODO*/ }) {
+            IconButton(onClick = { onAddItemClicked() }) {
                 Icon(
                     modifier = Modifier.size(25.dp),
                     imageVector = Icons.Default.Add,
@@ -242,11 +301,6 @@ fun ChatBottomBar(
                 onValueChanged = {
                     viewModel.newMessageText.value = it
                 },
-//        trailingIcon =
-//        {
-//            Icon(imageVector = Icons.Default.Cancel, contentDescription = "Cancel Search")
-//        },
-//                onDone = { keyboardState?.hide() },
             )
 
             IconButton(onClick = {

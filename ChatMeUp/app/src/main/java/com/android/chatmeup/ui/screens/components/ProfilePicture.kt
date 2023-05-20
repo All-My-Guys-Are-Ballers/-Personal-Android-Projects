@@ -1,7 +1,6 @@
 package com.android.chatmeup.ui.screens.components
 
 import android.net.Uri
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -23,13 +22,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
-import com.android.chatmeup.R
+import com.android.chatmeup.ui.theme.cmuLightGrey
+import com.android.chatmeup.ui.theme.neutral_disabled
 import com.android.chatmeup.ui.theme.success_green
+import com.google.accompanist.placeholder.PlaceholderHighlight
+import com.google.accompanist.placeholder.placeholder
+import com.google.accompanist.placeholder.shimmer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,9 +41,16 @@ fun ProfilePicture(
     size: Dp = 60.dp,
     shape: Shape = RoundedCornerShape(30),
 ){
+    val painter = rememberAsyncImagePainter(Uri.parse(imageUrl))
     BadgedBox(
         modifier = Modifier
-            .size(size),
+            .size(size)
+            .placeholder(
+                visible = painter.state == AsyncImagePainter.State.Loading(painter),
+                highlight = PlaceholderHighlight.shimmer(
+                    highlightColor = neutral_disabled
+                ), color = cmuLightGrey, shape = shape
+            ),
         badge = {
             if(isOnline){
                 Card(
@@ -71,7 +80,7 @@ fun ProfilePicture(
                     .clip(shape)
                     .fillMaxSize(),
                 contentScale = ContentScale.Crop,
-                painter = rememberAsyncImagePainter(model = Uri.parse(imageUrl)),
+                painter = painter,
                 contentDescription = "Profile picture"
             )
         }
