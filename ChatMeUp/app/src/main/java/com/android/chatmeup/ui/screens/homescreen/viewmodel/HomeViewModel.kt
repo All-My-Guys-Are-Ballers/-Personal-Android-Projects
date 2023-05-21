@@ -7,26 +7,26 @@ import android.os.Looper
 import androidx.annotation.WorkerThread
 import androidx.lifecycle.*
 import androidx.lifecycle.viewmodel.CreationExtras
+import com.android.chatmeup.data.Result
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
 import com.android.chatmeup.data.db.entity.Chat
-import com.android.chatmeup.data.db.entity.UserFriend
-import com.android.chatmeup.data.db.entity.UserInfo
-import com.android.chatmeup.data.db.remote.FirebaseReferenceValueObserver
-import com.android.chatmeup.data.db.repository.DatabaseRepository
-import com.android.chatmeup.ui.DefaultViewModel
-import com.android.chatmeup.util.addNewItem
-import com.android.chatmeup.util.convertTwoUserIDs
-import com.android.chatmeup.util.updateItemAt
-import com.android.chatmeup.data.Result
 import com.android.chatmeup.data.db.entity.Message
 import com.android.chatmeup.data.db.entity.User
+import com.android.chatmeup.data.db.entity.UserFriend
+import com.android.chatmeup.data.db.entity.UserInfo
 import com.android.chatmeup.data.db.entity.UserNotification
+import com.android.chatmeup.data.db.remote.FirebaseReferenceValueObserver
 import com.android.chatmeup.data.db.repository.AuthRepository
+import com.android.chatmeup.data.db.repository.DatabaseRepository
+import com.android.chatmeup.data.model.ChatWithUserInfo
+import com.android.chatmeup.ui.DefaultViewModel
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
+import com.android.chatmeup.util.addNewItem
+import com.android.chatmeup.util.convertTwoUserIDs
 import com.android.chatmeup.util.removeItem
-import com.android.chatmeup.data.model.ChatWithUserInfo
+import com.android.chatmeup.util.updateItemAt
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -151,9 +151,9 @@ class HomeViewModel @AssistedInject constructor(
     }
 
     private fun loadAndObserveChat(userInfo: UserInfo) {
-        val observer = FirebaseReferenceValueObserver()
-        firebaseReferenceObserverList.add(observer)
         if(chatsList.value?.find{it.mUserInfo == userInfo} == null){
+            val observer = FirebaseReferenceValueObserver()
+            firebaseReferenceObserverList.add(observer)
             dbRepository.loadAndObserveChat(
                 convertTwoUserIDs(myUserId, userInfo.id),
                 observer
@@ -162,6 +162,7 @@ class HomeViewModel @AssistedInject constructor(
                     _updatedChatWithUserInfo.value =
                         result.data?.let { ChatWithUserInfo(it, userInfo) }
                     result.data?.let { loadAndObserveUserInfo(it, userInfo) }
+                    Timber.tag(tag).d("${userInfo.displayName} has an updated message ${result.data?.lastMessage?.text ?: ""}")
                 } else if (result is Result.Error) {
                     chatsList.value?.let {
                         val newList = mutableListOf<ChatWithUserInfo>().apply { addAll(it) }

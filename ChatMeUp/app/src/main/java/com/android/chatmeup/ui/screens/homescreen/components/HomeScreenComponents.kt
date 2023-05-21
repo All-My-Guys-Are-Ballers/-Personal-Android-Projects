@@ -2,6 +2,7 @@ package com.android.chatmeup.ui.screens.homescreen.components
 
 import android.app.Activity
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
@@ -28,7 +29,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.rounded.Circle
 import androidx.compose.material3.Button
@@ -60,6 +60,7 @@ import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
 import com.android.chatmeup.ui.screens.components.CmuDarkButton
 import com.android.chatmeup.ui.screens.components.CmuInputTextField
+import com.android.chatmeup.ui.screens.components.ImagePage
 import com.android.chatmeup.ui.screens.components.ProfilePicture
 import com.android.chatmeup.ui.screens.homescreen.viewmodel.AddContactEventState
 import com.android.chatmeup.ui.screens.homescreen.viewmodel.HomeViewModel
@@ -83,7 +84,8 @@ fun ChatListItem(
     modifier: Modifier = Modifier,
     myUserId: String,
     item: ChatWithUserInfo,
-    onNavigateToChat: (String) -> Unit
+    onNavigateToChat: (String) -> Unit,
+    onProfileImageClicked: () -> Unit
 ){
     Card(onClick = {
         onNavigateToChat("${item.mChat.info.id}%%%${myUserId}%%%${item.mUserInfo.id}")
@@ -93,6 +95,9 @@ fun ChatListItem(
     ) {
         Row(modifier = modifier) {
             ProfilePicture(
+                modifier = Modifier.clickable {
+                    onProfileImageClicked()
+                },
                 imageUrl = item.mUserInfo.profileImageUrl,
                 isOnline = item.mUserInfo.online,
                 size = 60.dp
@@ -425,12 +430,15 @@ fun SheetLayout(
     currentScreen: BottomSheetScreen,
     context: Context,
     activity: Activity?,
+    selectedImageTitle: String,
+    selectedImageUri: Uri,
     addContactEventState: AddContactEventState,
     viewModel: HomeViewModel,
     notificationsList: List<UserInfo>?,
     onAddContactClicked: () -> Unit,
     newContactEmail: String,
     onNewContactEmailChanged: (String) -> Unit,
+    onCloseImage: () -> Unit
 ) {
     when(currentScreen){
         BottomSheetScreen.AddContact -> {
@@ -452,6 +460,15 @@ fun SheetLayout(
                 )
             }
         }
+
+        BottomSheetScreen.ProfileImage -> {
+            ImagePage(
+                title = selectedImageTitle,
+                imageUri = selectedImageUri
+            ) {
+                onCloseImage()
+            }
+        }
     }
 }
 
@@ -459,4 +476,5 @@ fun SheetLayout(
 sealed class BottomSheetScreen {
     object AddContact: BottomSheetScreen()
     object RequestsList: BottomSheetScreen()
+    object ProfileImage: BottomSheetScreen()
 }

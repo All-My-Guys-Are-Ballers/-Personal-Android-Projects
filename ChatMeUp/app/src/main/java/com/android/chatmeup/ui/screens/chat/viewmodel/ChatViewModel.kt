@@ -13,9 +13,7 @@ import com.android.chatmeup.data.datastore.CmuDataStoreRepository
 import com.android.chatmeup.data.db.entity.Chat
 import com.android.chatmeup.data.db.entity.ChatInfo
 import com.android.chatmeup.data.db.entity.Message
-import com.android.chatmeup.data.db.entity.User
 import com.android.chatmeup.data.db.entity.UserInfo
-import com.android.chatmeup.data.db.entity.UserNotification
 import com.android.chatmeup.data.db.remote.FirebaseReferenceChildObserver
 import com.android.chatmeup.data.db.remote.FirebaseReferenceValueObserver
 import com.android.chatmeup.data.db.repository.DatabaseRepository
@@ -36,14 +34,17 @@ class ChatViewModel @AssistedInject constructor(
     private val dbRepository: DatabaseRepository = DatabaseRepository()
 
     private val _otherUser: MutableLiveData<UserInfo> = MutableLiveData()
+    private val _chatInfo: MutableLiveData<ChatInfo> = MutableLiveData()
     private val _addedMessage = MutableLiveData<Message>()
 
     private val fbRefMessagesChildObserver = FirebaseReferenceChildObserver()
     private val fbRefUserInfoObserver = FirebaseReferenceValueObserver()
+    private val fbRefChatInfoObserver = FirebaseReferenceValueObserver()
 
     val messagesList = MediatorLiveData<MutableList<Message>>()
     val newMessageText = MutableLiveData<String>()
     val otherUser: LiveData<UserInfo> = _otherUser
+    val chatInfo: LiveData<ChatInfo> = _chatInfo
 
     val lazyListState = MutableStateFlow(LazyListState())
 
@@ -56,6 +57,7 @@ class ChatViewModel @AssistedInject constructor(
         super.onCleared()
         fbRefMessagesChildObserver.clear()
         fbRefUserInfoObserver.clear()
+        fbRefChatInfoObserver.clear()
     }
 
     private fun checkAndUpdateLastMessageSeen() {
@@ -93,6 +95,9 @@ class ChatViewModel @AssistedInject constructor(
                 loadAndObserveNewMessages()
             }
         }
+        dbRepository.loadAndObserveChatInfo(chatId, fbRefChatInfoObserver){
+            onResult(_chatInfo, it)
+        }
     }
 
     private fun loadAndObserveNewMessages() {
@@ -103,12 +108,13 @@ class ChatViewModel @AssistedInject constructor(
             fbRefMessagesChildObserver
         ) { result: Result<Message> ->
             onResult(_addedMessage, result)
+            dbRepository.updateUnreadMessages(chatId, 0)
         }
     }
 
     fun sendMessagePressed() {
         if (!newMessageText.value.isNullOrBlank()) {
-            val newMsg = Message(myUserId, newMessageText.value!!)
+            val newMsg = Message(senderID = myUserId, text = newMessageText.value!!)
 //            val chat = Chat(lastMessage = newMsg, info = ChatInfo(chatId, ))
             dbRepository.updateNewMessage(chatId, newMsg)
             checkAndUpdateUnreadMessages(newMsg)

@@ -15,7 +15,8 @@ import com.google.firebase.ktx.Firebase
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun CmuApp(
-    chatMeUpApp: CmuApplication
+    chatMeUpApp: CmuApplication,
+//    onBackPressedDispatcher: OnBackPressedDispatcher
 ) {
     val appState: CmuAppState = rememberChatMeUpAppState(
         context = LocalContext.current,
@@ -32,6 +33,7 @@ fun CmuApp(
         onBackClick = appState::navigateBack,
         onNavigateToDestination = appState::navigate,
         myUserId = chatMeUpApp.myUserID,
+//        onBackPressedDispatcher = onBackPressedDispatcher,
         startDestination = if(Firebase.auth.currentUser == null)LoginDestination.route else HomeDestination.route
     )
 }

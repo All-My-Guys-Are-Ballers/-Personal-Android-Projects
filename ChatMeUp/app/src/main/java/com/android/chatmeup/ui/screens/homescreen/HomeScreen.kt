@@ -1,11 +1,12 @@
 package com.android.chatmeup.ui.screens.homescreen
 
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -27,6 +28,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -46,26 +48,32 @@ import com.android.chatmeup.ui.screens.homescreen.components.HomeTopBar
 import com.android.chatmeup.ui.screens.homescreen.components.SheetLayout
 import com.android.chatmeup.ui.screens.homescreen.viewmodel.HomeViewModel
 import com.android.chatmeup.ui.screens.homescreen.viewmodel.homeViewModelProvider
+import com.android.chatmeup.ui.theme.md_theme_dark_background
+import com.android.chatmeup.ui.theme.md_theme_light_background
 import com.android.chatmeup.ui.theme.neutral_disabled
 import com.android.chatmeup.util.SharedPreferencesUtil
 import com.google.accompanist.pager.*
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.launch
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalPagerApi::class, ExperimentalMaterialApi::class, ExperimentalComposeUiApi::class)
-@SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
 fun HomeScreen(
     context: Context,
     activity: Activity?,
+//    onBackPressedDispatcher: OnBackPressedDispatcher,
     factory: HomeViewModel.Factory,
     myUserId: String,
     onNavigateToChat: (String) -> Unit,
     onNavigateToLogin: () -> Unit,
     onNavigateToSettings: () -> Unit,
 ){
+    val systemUiController = rememberSystemUiController()
+    //change status bar color anytime we change light mode or dark mode
+
     val myUserID = SharedPreferencesUtil.getUserID(context)
 
     val viewModel: HomeViewModel = homeViewModelProvider(
@@ -83,6 +91,11 @@ fun HomeScreen(
 
     var searchText by rememberSaveable { mutableStateOf("") }
 
+    var selectedImageTitle by rememberSaveable { mutableStateOf("Profile Picture") }
+
+    var selectedImageUri by rememberSaveable { mutableStateOf(Uri.parse(myUserInfo?.profileImageUrl
+        ?: "")) }
+
     val pagerState = rememberPagerState(1)
 
     val scope = rememberCoroutineScope()
@@ -98,6 +111,20 @@ fun HomeScreen(
 
     var newContactEmail by remember {
         mutableStateOf("")
+    }
+
+    val isDarkTheme = isSystemInDarkTheme()
+
+    LaunchedEffect(modalBottomSheetState.isVisible){
+        if(!(modalBottomSheetState.isVisible && currentBottomSheet == BottomSheetScreen.ProfileImage)){
+            systemUiController.setSystemBarsColor(
+                color = if (isDarkTheme) md_theme_dark_background else md_theme_light_background,
+                darkIcons = !isDarkTheme
+            )
+        }
+        else{
+            systemUiController.setSystemBarsColor(Color.Black, darkIcons = false)
+        }
     }
 
     LaunchedEffect(notificationsList){
@@ -128,6 +155,17 @@ fun HomeScreen(
                 newContactEmail = newContactEmail,
                 onNewContactEmailChanged = {newContactEmail= it},
                 addContactEventState = addContactEventState,
+                selectedImageTitle = selectedImageTitle,
+                selectedImageUri = selectedImageUri,
+                onCloseImage = {
+                    systemUiController.setSystemBarsColor(
+                        color = if (isDarkTheme) md_theme_dark_background else md_theme_light_background,
+                        darkIcons = !isDarkTheme
+                    )
+                    scope.launch{
+                        modalBottomSheetState.hide()
+                    }
+                }
             )
         }
     ){
@@ -225,7 +263,16 @@ fun HomeScreen(
                         onSearchTextValueChanged = { searchText = it },
                         list = chatsList,
                         myUserId = myUserId,
-                        onNavigateToChat = onNavigateToChat
+                        onProfileImageClicked = {userInfo:UserInfo ->
+                            selectedImageTitle = userInfo.displayName
+                            selectedImageUri = Uri.parse(userInfo.profileImageUrl)
+                            currentBottomSheet = BottomSheetScreen.ProfileImage
+                            systemUiController.setSystemBarsColor(Color.Black, darkIcons = false)
+                            scope.launch {
+                                modalBottomSheetState.show()
+                            }
+                        },
+                        onNavigateToChat = onNavigateToChat,
                     )
 
                     2 -> MoreScreen(
@@ -251,6 +298,7 @@ fun ChatsScreen(
     modifier: Modifier = Modifier,
     searchTextValue: String,
     onSearchTextValueChanged: (String) -> Unit,
+    onProfileImageClicked: (UserInfo) -> Unit,
     list: MutableList<ChatWithUserInfo>?,
     myUserId: String,
     onNavigateToChat: (String) -> Unit
@@ -264,13 +312,15 @@ fun ChatsScreen(
                 searchTextValue = searchTextValue,
                 onSearchTextValueChanged = onSearchTextValueChanged,
             )
-            Spacer(modifier = Modifier.height(25.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             if(!list.isNullOrEmpty()){
                 ChatList(
                     list = list,
                     myUserId = myUserId,
-                    onNavigateToChat = onNavigateToChat
-                ) }
+                    onNavigateToChat = onNavigateToChat,
+                    onProfileImageClicked = onProfileImageClicked,
+                )
+            }
         }
     }
 }
@@ -313,18 +363,23 @@ fun MoreScreen(
 fun ChatList(
     list: MutableList<ChatWithUserInfo>,
     myUserId: String,
-    onNavigateToChat: (String) -> Unit
+    onNavigateToChat: (String) -> Unit,
+    onProfileImageClicked: (UserInfo) -> Unit
 ){
     LazyColumn(
         modifier = Modifier.padding(start = 25.dp, end = 25.dp),
-        verticalArrangement = Arrangement.spacedBy(25.dp)
+//        verticalArrangement = Arrangement.spacedBy(25.dp)
     ){
         repeat(list.size){
             item {
                 ChatListItem(
+                    modifier = Modifier.padding(vertical = 10.dp),
                     myUserId = myUserId,
                     item = list[it],
-                    onNavigateToChat = onNavigateToChat
+                    onNavigateToChat = onNavigateToChat,
+                    onProfileImageClicked = {
+                        onProfileImageClicked(list[it].mUserInfo)
+                    }
                 )
             }
         }

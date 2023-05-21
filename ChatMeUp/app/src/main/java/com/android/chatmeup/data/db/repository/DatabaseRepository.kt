@@ -1,12 +1,19 @@
 package com.android.chatmeup.data.db.repository
 
-import com.android.chatmeup.data.db.entity.*
-import com.android.chatmeup.util.wrapSnapshotToArrayList
-import com.android.chatmeup.util.wrapSnapshotToClass
+import com.android.chatmeup.data.Result
+import com.android.chatmeup.data.db.entity.Chat
+import com.android.chatmeup.data.db.entity.ChatInfo
+import com.android.chatmeup.data.db.entity.Message
+import com.android.chatmeup.data.db.entity.User
+import com.android.chatmeup.data.db.entity.UserFriend
+import com.android.chatmeup.data.db.entity.UserInfo
+import com.android.chatmeup.data.db.entity.UserNotification
+import com.android.chatmeup.data.db.entity.UserRequest
 import com.android.chatmeup.data.db.remote.FirebaseDataSource
 import com.android.chatmeup.data.db.remote.FirebaseReferenceChildObserver
 import com.android.chatmeup.data.db.remote.FirebaseReferenceValueObserver
-import com.android.chatmeup.data.Result
+import com.android.chatmeup.util.wrapSnapshotToArrayList
+import com.android.chatmeup.util.wrapSnapshotToClass
 
 
 class DatabaseRepository {
@@ -162,6 +169,10 @@ class DatabaseRepository {
 
     fun loadAndObserveChat(chatID: String, observer: FirebaseReferenceValueObserver, b: ((Result<Chat>) -> Unit)) {
         firebaseDatabaseService.attachChatObserver(Chat::class.java, chatID, observer, b)
+    }
+
+    fun loadAndObserveChatInfo(chatID: String, observer: FirebaseReferenceValueObserver, b: ((Result<ChatInfo>) -> Unit)) {
+        firebaseDatabaseService.attachChatInfoObserver(ChatInfo::class.java, chatID, observer, b)
     }
 
     //endregion

@@ -32,6 +32,7 @@ fun CmuNavHost(
     startDestination: String,
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit,
+//    onBackPressedDispatcher: OnBackPressedDispatcher,
     myUserId: String,
 ) {
 
@@ -60,6 +61,7 @@ fun CmuNavHost(
         homeGraph(
             context = context,
             activity = activity,
+//            onBackPressedDispatcher = onBackPressedDispatcher,
             factory = EntryPointAccessors.fromActivity(
                 context as Activity, MainActivity.ViewModelFactoryProvider::class.java
             ).homeViewModelFactory(),

@@ -1,6 +1,5 @@
 package com.android.chatmeup
 
-import android.Manifest
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
-import androidx.core.app.ActivityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
@@ -50,18 +48,6 @@ class MainActivity : ComponentActivity() {
 
     }
 
-    private fun requestPermissions() {
-        ActivityCompat.requestPermissions(
-            this,
-            arrayOf(
-                Manifest.permission.CAMERA,
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            ),
-            permissionRequestCode
-        )
-    }
-
-
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
 //        WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -94,6 +80,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     CmuApp(
                         chatMeUpApp = chatMeUpApp,
+//                        onBackPressedDispatcher = onBackPressedDispatcher
                     )
                 }
             }

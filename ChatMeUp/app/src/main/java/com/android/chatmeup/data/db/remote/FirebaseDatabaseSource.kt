@@ -1,12 +1,22 @@
 package com.android.chatmeup.data.db.remote
 
-import com.android.chatmeup.data.db.entity.*
+import com.android.chatmeup.data.Result
+import com.android.chatmeup.data.db.entity.Chat
+import com.android.chatmeup.data.db.entity.Message
+import com.android.chatmeup.data.db.entity.User
+import com.android.chatmeup.data.db.entity.UserFriend
+import com.android.chatmeup.data.db.entity.UserNotification
+import com.android.chatmeup.data.db.entity.UserRequest
 import com.android.chatmeup.util.wrapSnapshotToArrayList
 import com.android.chatmeup.util.wrapSnapshotToClass
-import com.android.chatmeup.data.Result
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.TaskCompletionSource
-import com.google.firebase.database.*
+import com.google.firebase.database.ChildEventListener
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 
 class FirebaseReferenceConnectedObserver {
 
@@ -306,6 +316,11 @@ class FirebaseDataSource {
     fun <T> attachChatObserver(resultClassName: Class<T>, chatID: String, refObs: FirebaseReferenceValueObserver, b: ((Result<T>) -> Unit)) {
         val listener = attachValueListenerToBlock(resultClassName, b)
         refObs.start(listener, refToPath("chats/$chatID"))
+    }
+
+    fun <T> attachChatInfoObserver(resultClassName: Class<T>, chatID: String, refObs: FirebaseReferenceValueObserver, b: ((Result<T>) -> Unit)) {
+        val listener = attachValueListenerToBlock(resultClassName, b)
+        refObs.start(listener, refToPath("chats/$chatID/info"))
     }
 
     //endregion

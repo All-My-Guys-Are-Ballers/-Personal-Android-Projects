@@ -36,6 +36,7 @@ import com.google.accompanist.placeholder.shimmer
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfilePicture(
+    modifier: Modifier = Modifier,
     imageUrl: String,
     isOnline: Boolean = false,
     size: Dp = 60.dp,
@@ -43,7 +44,7 @@ fun ProfilePicture(
 ){
     val painter = rememberAsyncImagePainter(Uri.parse(imageUrl))
     BadgedBox(
-        modifier = Modifier
+        modifier = modifier
             .size(size)
             .placeholder(
                 visible = painter.state == AsyncImagePainter.State.Loading(painter),

@@ -64,6 +64,7 @@ import com.android.chatmeup.util.epochToHoursAndMinutes
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberPermissionState
 import timber.log.Timber
+import kotlin.Int.Companion.MAX_VALUE
 
 @OptIn(ExperimentalPermissionsApi::class)
 @RequiresApi(Build.VERSION_CODES.O)
@@ -83,7 +84,7 @@ fun ChatScreen(
         otherUserId = otherUserId,
         factory = factory
     )
-
+    val chatInfo by viewModel.chatInfo.observeAsState()
     val otherUserInfo by viewModel.otherUser.observeAsState()
 
     val messageList by viewModel.messagesList.observeAsState()
@@ -163,7 +164,10 @@ fun ChatScreen(
                         item{ 
                             MessageItem(
                                 myUserId = userId,
-                                message = messageList!![it]) 
+                                message = messageList!![it],
+                                seen = it < (messageList?.size?.minus(chatInfo?.no_of_unread_messages!!)
+                                    ?: MAX_VALUE)
+                            )
                         }
                     }
                 }
@@ -177,7 +181,8 @@ fun ChatScreen(
 @Composable
 fun MessageItem(
     myUserId: String,
-    message: Message
+    message: Message,
+    seen: Boolean,
 ){
     val isSender = myUserId == message.senderID
 
@@ -187,16 +192,14 @@ fun MessageItem(
             .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 5.dp),
         horizontalArrangement = if(isSender) Arrangement.End else Arrangement.Start
     ) {
-        if(isSender){
-            Spacer(modifier = Modifier.fillMaxWidth(0.2f))
-        }
         Card(
             shape = RoundedCornerShape(
-                topStartPercent = 25,
-                topEndPercent = 25,
-                bottomStartPercent = if(isSender) 25 else 0,
-                bottomEndPercent = if(isSender) 0 else 25
+                topStart = 15.dp,
+                topEnd = 15.dp,
+                bottomStart = if(isSender) 15.dp else 0.dp,
+                bottomEnd = if(isSender) 0.dp else 15.dp
             ),
+            modifier = Modifier.padding(start = if(isSender)70.dp else 0.dp, end = if(!isSender)70.dp else 0.dp),
             colors = CardDefaults.cardColors(
                 containerColor = if(isSender) seed else MaterialTheme.colorScheme.background
             )
@@ -218,16 +221,13 @@ fun MessageItem(
                 Text(
                     text = "${epochToHoursAndMinutes(message.epochTimeMs)}${
                         if(isSender) {
-                            if(message.seen) "•Read" else "•Sent"
+                            if(seen) "•Read" else "•Sent"
                         } else ""
                     }",
                     color = neutral_disabled,
                     style = MaterialTheme.typography.labelSmall
                 )
             }
-        }
-        if(!isSender){
-            Spacer(modifier = Modifier.fillMaxWidth(0.2f))
         }
     }
 }
