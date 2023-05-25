@@ -70,7 +70,7 @@ import com.android.chatmeup.ui.theme.cmuOffWhite
 import com.android.chatmeup.ui.theme.md_theme_dark_onPrimaryContainer
 import com.android.chatmeup.ui.theme.neutral_disabled
 import com.android.chatmeup.ui.theme.seed
-import com.android.chatmeup.util.epochToHoursAndMinutes
+import com.android.chatmeup.util.convertEpochToString
 import com.android.chatmeup.util.isEmailValid
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.PagerState
@@ -125,7 +125,7 @@ fun ChatListItem(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = epochToHoursAndMinutes(item.mChat.lastMessage.epochTimeMs),
+                    text = convertEpochToString(item.mChat.lastMessage.epochTimeMs),
                     color = neutral_disabled,
                     style = MaterialTheme.typography.labelLarge
                 )

@@ -2,6 +2,7 @@ package com.android.chatmeup.util
 
 import android.text.TextUtils
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -36,4 +37,32 @@ fun epochToHoursAndMinutes(epoch: Long): String {
     )
 
     return formatter.format(date)
+}
+
+fun convertEpochToString(epochTime: Long): String {
+    val currentTime = System.currentTimeMillis()
+    val currentCalendar = Calendar.getInstance()
+    currentCalendar.timeInMillis = currentTime
+
+    val epochCalendar = Calendar.getInstance()
+    epochCalendar.timeInMillis = epochTime
+
+    val dateFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+    val dateFormat = SimpleDateFormat("dd/MM/yy", Locale.getDefault())
+
+    val currentDayStart = Calendar.getInstance()
+    currentDayStart.set(Calendar.HOUR_OF_DAY, 0)
+    currentDayStart.set(Calendar.MINUTE, 0)
+    currentDayStart.set(Calendar.SECOND, 0)
+    currentDayStart.set(Calendar.MILLISECOND, 0)
+
+    val previousDayStart = Calendar.getInstance()
+    previousDayStart.timeInMillis = currentDayStart.timeInMillis
+    previousDayStart.add(Calendar.DAY_OF_MONTH, -1)
+
+    return when {
+        epochCalendar.after(currentDayStart) -> dateFormatter.format(Date(epochTime))
+        epochCalendar.after(previousDayStart) -> "Yesterday"
+        else -> dateFormat.format(Date(epochTime))
+    }
 }
