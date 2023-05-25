@@ -1,8 +1,6 @@
 package com.android.chatmeup.util
 
-import android.os.Build
 import android.text.TextUtils
-import androidx.annotation.RequiresApi
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -29,7 +27,6 @@ fun isName(s: String): Int {
     } else 0
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
 fun epochToHoursAndMinutes(epoch: Long): String {
     val date =
         Date(epoch)

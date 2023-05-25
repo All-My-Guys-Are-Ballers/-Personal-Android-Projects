@@ -5,16 +5,16 @@ import android.content.Context
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import com.android.chatmeup.data.Result
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
+import com.android.chatmeup.data.db.entity.User
 import com.android.chatmeup.data.db.repository.AuthRepository
+import com.android.chatmeup.data.db.repository.DatabaseRepository
+import com.android.chatmeup.data.db.repository.StorageRepository
 import com.android.chatmeup.ui.DefaultViewModel
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
-import com.android.chatmeup.data.Result
-import com.android.chatmeup.data.db.entity.User
-import com.android.chatmeup.data.db.repository.DatabaseRepository
-import com.android.chatmeup.data.db.repository.StorageRepository
 import com.android.chatmeup.util.SharedPreferencesUtil
 import com.android.chatmeup.util.convertFileToByteArray
 import com.fredrikbogg.android_chat_app.data.model.CreateUser
@@ -170,7 +170,6 @@ class RegisterUserScreenViewModel @Inject constructor(cmuDataStoreRepository: Cm
             onResult(null, result)
             if (result is Result.Success) {
                 result.data?.uid?.let {uid ->
-//                    Timber.tag(tag).d("ImageByteArray : ${convertFileToByteArray(context, imageUri)}")
                     if(imageUri != null){
                         storageRepository.updateUserProfileImage(
                             uid,

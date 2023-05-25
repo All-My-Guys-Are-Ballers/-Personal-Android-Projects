@@ -8,7 +8,6 @@ import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -75,7 +74,6 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.Objects
 
-@RequiresApi(Build.VERSION_CODES.R)
 @OptIn(ExperimentalMaterial3Api::class,
     ExperimentalMaterialApi::class
 )
@@ -143,7 +141,7 @@ fun RegisterUserScreen(
     ) { isGranted ->
         if (isGranted) {
             // Permission granted, launch the camera
-            if (newPhotoURI != null) {
+            if (newPhotoURI != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 context.contentResolver.delete(newPhotoURI!!, null)
             }
             newPhotoURI = FileProvider.getUriForFile(

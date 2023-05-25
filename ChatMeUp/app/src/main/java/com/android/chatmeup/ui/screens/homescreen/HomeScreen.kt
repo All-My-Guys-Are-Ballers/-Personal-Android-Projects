@@ -314,8 +314,9 @@ fun ChatsScreen(
             )
             Spacer(modifier = Modifier.height(10.dp))
             if(!list.isNullOrEmpty()){
+                val sortedList = list.sortedByDescending { it.mChat.lastMessage.epochTimeMs }
                 ChatList(
-                    list = list,
+                    list = sortedList,
                     myUserId = myUserId,
                     onNavigateToChat = onNavigateToChat,
                     onProfileImageClicked = onProfileImageClicked,
@@ -361,7 +362,7 @@ fun MoreScreen(
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ChatList(
-    list: MutableList<ChatWithUserInfo>,
+    list: List<ChatWithUserInfo>,
     myUserId: String,
     onNavigateToChat: (String) -> Unit,
     onProfileImageClicked: (UserInfo) -> Unit

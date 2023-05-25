@@ -21,10 +21,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.ModalBottomSheetLayout
+import androidx.compose.material.ModalBottomSheetState
+import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -38,7 +44,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -46,27 +52,33 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import com.android.chatmeup.R
+import com.android.chatmeup.data.db.entity.ChatInfo
 import com.android.chatmeup.data.db.entity.Message
 import com.android.chatmeup.data.db.entity.UserInfo
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
+import com.android.chatmeup.ui.screens.chat.data.ChatState
 import com.android.chatmeup.ui.screens.chat.viewmodel.ChatViewModel
 import com.android.chatmeup.ui.screens.chat.viewmodel.chatViewModelProvider
 import com.android.chatmeup.ui.screens.components.CmuInputTextField
 import com.android.chatmeup.ui.screens.components.ProfilePicture
 import com.android.chatmeup.ui.screens.components.TextImage
+import com.android.chatmeup.ui.screens.components.UploadFileOptionDialog
+import com.android.chatmeup.ui.screens.components.UploadImageScreen
 import com.android.chatmeup.ui.theme.neutral_disabled
 import com.android.chatmeup.ui.theme.seed
+import com.android.chatmeup.util.createTempImageFile
 import com.android.chatmeup.util.epochToHoursAndMinutes
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.rememberPermissionState
+import kotlinx.coroutines.launch
 import timber.log.Timber
-import kotlin.Int.Companion.MAX_VALUE
 
-@OptIn(ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterialApi::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ChatScreen(
@@ -93,25 +105,36 @@ fun ChatScreen(
 
     val lazyListState by viewModel.lazyListState.collectAsState()
 
-    val cameraPermissionState = rememberPermissionState(permission = Manifest.permission.CAMERA)
-    val storagePermissionState = rememberPermissionState(
-        permission = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
-    )
 
-    var photoURI: Uri? by rememberSaveable {
+
+    val modalBottomSheetState =
+        rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden,
+            confirmValueChange = { it != ModalBottomSheetValue.HalfExpanded }
+        )
+    
+//    var photoURI: Uri? by rememberSaveable {
+//        mutableStateOf(null)
+//    }
+
+    var newPhotoURI: Uri? by rememberSaveable {
         mutableStateOf(null)
     }
 
-    var imageUploaded by remember {
-        mutableStateOf(false)
+    var chatState by rememberSaveable {
+        mutableStateOf(ChatState.CHAT)
     }
+
+
+    val scope = rememberCoroutineScope()
 
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
     ) { success ->
         if (success) {
             // Retrieve the captured image URI from the camera
-            imageUploaded = true
+//            photoURI = newPhotoURI
+            scope.launch{ modalBottomSheetState.hide() }
+            chatState = ChatState.UPLOAD_IMAGE
         }
     }
 
@@ -128,56 +151,192 @@ fun ChatScreen(
                 duration = CmuToastDuration.SHORT
             )
         } else {
-            photoURI = uri
-            Timber.tag(ContentValues.TAG).d("Photo URI: $photoURI")
-            imageUploaded = true
+            newPhotoURI = uri
+            Timber.tag(ContentValues.TAG).d("Photo URI: $newPhotoURI")
+            scope.launch{ modalBottomSheetState.hide() }
+            chatState = ChatState.UPLOAD_IMAGE
+        }
+    }
+
+    val requestCameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // Permission granted, launch the camera
+            if (newPhotoURI != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                context.contentResolver.delete(newPhotoURI!!, null)
+            }
+            newPhotoURI = FileProvider.getUriForFile(
+                context,
+                context.applicationContext.packageName + ".provider",
+                createTempImageFile(context)
+            )
+            cameraLauncher.launch(newPhotoURI)
+        } else {
+            // Permission denied, show an error message
+            CmuToast.createFancyToast(context, activity = activity, "Camera","Permission denied", CmuToastStyle.ERROR, CmuToastDuration.SHORT)
+        }
+    }
+
+    val requestStoragePermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+
+            storageLauncher.launch("image/*")
+        } else {
+            // Permission denied, show an error message
+            CmuToast.createFancyToast(context, activity = activity, "Storage","Permission denied", CmuToastStyle.ERROR, CmuToastDuration.SHORT)
+        }
+    }
+
+    when(chatState){
+        ChatState.CHAT -> {
+            ChatListScreen(
+                onTakePicture = { requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA) },
+                onUploadFromStorageClicked = { requestStoragePermissionLauncher.launch(
+                    if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
+                ) },
+                otherUserInfo = otherUserInfo,
+                onBackClicked = onBackClicked,
+                newMessageText = newMessageText,
+                viewModel = viewModel,
+                messageList = messageList,
+                lazyListState = lazyListState,
+                userId = userId,
+                chatInfo = chatInfo,
+                modalBottomSheetState = modalBottomSheetState,
+                onAddItemClicked = {
+                    scope.launch {
+                        modalBottomSheetState.show()
+                    }
+                },
+                newPhotoUri = newPhotoURI,
+                context = context,
+                activity = activity,
+            )
+        }
+        ChatState.UPLOAD_IMAGE -> {
+            newPhotoURI?.let {
+                UploadImageScreen(
+                    imageUri = it,
+                    onUploadCancelled = {
+                        chatState = ChatState.CHAT
+                    },
+                    messageText = newMessageText!!,
+                    onValueChanged = {value ->
+                        viewModel.newMessageText.value = value
+                    },
+                    onSendMessage = {
+                        newPhotoURI?.let { uri ->
+                            viewModel.sendMessagePressed(
+                                context = context,
+                                activity = activity,
+                                newPhotoURI = uri
+                            )
+                        } ?: CmuToast.createFancyToast(
+                            context = context,
+                            activity = activity,
+                            "Error",
+                            "Unable to upload Image. Please try again",
+                            CmuToastStyle.ERROR,
+                            CmuToastDuration.SHORT
+                        )
+                        chatState = ChatState.CHAT
+                    }
+
+                )
+            } ?: {
+                CmuToast.createFancyToast(
+                    context = context,
+                    activity = activity,
+                    "Error",
+                    "Unable to upload Image. Please try again",
+                    CmuToastStyle.ERROR,
+                    CmuToastDuration.SHORT
+                )
+                chatState = ChatState.CHAT
+            }
         }
     }
 
 
-    Scaffold(
-        topBar = {
-            ChatTopBar(
-                otherUserInfo = otherUserInfo,
-                onBackClicked = onBackClicked
-            )
-        },
-        bottomBar = {
-            ChatBottomBar(
-                messageText = newMessageText ?: "",
-                viewModel = viewModel,
-                onAddItemClicked = {}
-            )
+
+}
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun ChatListScreen(
+    onTakePicture: () -> Unit,
+    onUploadFromStorageClicked: () -> Unit,
+    otherUserInfo: UserInfo?,
+    onBackClicked: () -> Unit,
+    newMessageText: String?,
+    viewModel: ChatViewModel,
+    messageList: MutableList<Message>?,
+    lazyListState: LazyListState,
+    userId: String,
+    chatInfo: ChatInfo?,
+    modalBottomSheetState: ModalBottomSheetState,
+    onAddItemClicked: () -> Unit,
+    newPhotoUri: Uri?,
+    context: Context,
+    activity: Activity?,
+){
+    ModalBottomSheetLayout(
+        sheetState = modalBottomSheetState,
+        sheetBackgroundColor = MaterialTheme.colorScheme.background,
+        sheetContent = {
+            UploadFileOptionDialog(
+                title = "Upload Media",
+                onTakePictureClicked = onTakePicture,
+                onUploadFromStorageClicked = onUploadFromStorageClicked)
         }
-    ){paddingValues ->
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.tertiaryContainer
         ){
-            if (!messageList.isNullOrEmpty()){
-                LazyColumn(
-                    state = lazyListState,
-                    verticalArrangement = Arrangement.Bottom,
-                    modifier = Modifier.padding(paddingValues)
-                ) {
-                    repeat(messageList?.size ?: 0) {
-                        item{ 
-                            MessageItem(
-                                myUserId = userId,
-                                message = messageList!![it],
-                                seen = it < (messageList?.size?.minus(chatInfo?.no_of_unread_messages!!)
-                                    ?: MAX_VALUE)
-                            )
+        Scaffold(
+            topBar = {
+                ChatTopBar(
+                    otherUserInfo = otherUserInfo,
+                    onBackClicked = onBackClicked
+                )
+            },
+            bottomBar = {
+                ChatBottomBar(
+                    newPhotoURI = newPhotoUri,
+                    messageText = newMessageText ?: "",
+                    viewModel = viewModel,
+                    onAddItemClicked = onAddItemClicked,
+                    context = context,
+                    activity = activity,
+                )
+            }
+        ) { paddingValues ->
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.tertiaryContainer
+            ) {
+                if (!messageList.isNullOrEmpty()) {
+                    LazyColumn(
+                        state = lazyListState,
+                        verticalArrangement = Arrangement.Bottom,
+                        modifier = Modifier.padding(paddingValues)
+                    ) {
+                        repeat(messageList.size ?: 0) {
+                            item {
+                                MessageItem(
+                                    myUserId = userId,
+                                    message = messageList[it],
+                                    seen = it < (messageList.size.minus(chatInfo?.no_of_unread_messages!!))
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     }
-
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MessageItem(
     myUserId: String,
@@ -205,17 +364,25 @@ fun MessageItem(
             )
         ) {
             Column(
-                modifier = Modifier.padding(10.dp),
+//                modifier = Modifier.padding(10.dp),
                 horizontalAlignment = if (isSender) Alignment.End else Alignment.Start
             ) {
                 if(message.imageUrl.isNotBlank()){
-                    TextImage(imageUri = Uri.parse(message.imageUrl)) {
-                        //Load Image Page
+                    TextImage(
+                        modifier = Modifier.padding(5.dp),
+                        imageUri = Uri.parse(message.imageUrl)
+                    ) {
+                        // TODO :: Load Image Page
                     }
                 }
+                Spacer(modifier = Modifier.height(5.dp))
                 Text(
                     text = message.text,
+                    modifier = Modifier
+                        .align(Alignment.Start)
+                        .padding(horizontal = 10.dp),
                     style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Left,
                     color = if(isSender) Color.White else MaterialTheme.colorScheme.onBackground
                 )
                 Text(
@@ -224,9 +391,11 @@ fun MessageItem(
                             if(seen) "•Read" else "•Sent"
                         } else ""
                     }",
+                    modifier = Modifier.padding(horizontal = 10.dp),
                     color = neutral_disabled,
                     style = MaterialTheme.typography.labelSmall
                 )
+                Spacer(modifier = Modifier.height(5.dp))
             }
         }
     }
@@ -270,9 +439,12 @@ fun ChatTopBar(otherUserInfo: UserInfo?,
 
 @Composable
 fun ChatBottomBar(
+    newPhotoURI: Uri?,
     messageText: String,
     viewModel: ChatViewModel,
-    onAddItemClicked: () -> Unit
+    onAddItemClicked: () -> Unit,
+    context: Context,
+    activity: Activity?
 ) {
     Surface(color = MaterialTheme.colorScheme.background) {
         Row(
@@ -304,7 +476,11 @@ fun ChatBottomBar(
             )
 
             IconButton(onClick = {
-                viewModel.sendMessagePressed()
+                viewModel.sendMessagePressed(
+                    context = context,
+                    activity = activity,
+                    newPhotoURI = newPhotoURI
+                )
             }) {
                 Icon(
                     modifier = Modifier.size(24.dp),

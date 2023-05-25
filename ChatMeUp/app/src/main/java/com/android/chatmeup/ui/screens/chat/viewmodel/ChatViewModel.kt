@@ -1,12 +1,16 @@
 package com.android.chatmeup.ui.screens.chat.viewmodel
 
+import android.app.Activity
+import android.content.Context
+import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.android.chatmeup.data.Result
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
@@ -17,13 +21,18 @@ import com.android.chatmeup.data.db.entity.UserInfo
 import com.android.chatmeup.data.db.remote.FirebaseReferenceChildObserver
 import com.android.chatmeup.data.db.remote.FirebaseReferenceValueObserver
 import com.android.chatmeup.data.db.repository.DatabaseRepository
+import com.android.chatmeup.data.db.repository.StorageRepository
 import com.android.chatmeup.ui.DefaultViewModel
+import com.android.chatmeup.ui.cmutoast.CmuToast
+import com.android.chatmeup.ui.cmutoast.CmuToastDuration
+import com.android.chatmeup.ui.cmutoast.CmuToastStyle
+import com.android.chatmeup.ui.screens.chat.data.ChatState
 import com.android.chatmeup.util.addNewItem
+import com.android.chatmeup.util.convertFileToByteArray
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
 
 class ChatViewModel @AssistedInject constructor(
     @Assisted("chatId") private val chatId: String,
@@ -32,6 +41,7 @@ class ChatViewModel @AssistedInject constructor(
     private val cmuDataStoreRepository: CmuDataStoreRepository
 ) : DefaultViewModel() {
     private val dbRepository: DatabaseRepository = DatabaseRepository()
+    private val storageRepository = StorageRepository()
 
     private val _otherUser: MutableLiveData<UserInfo> = MutableLiveData()
     private val _chatInfo: MutableLiveData<ChatInfo> = MutableLiveData()
@@ -42,9 +52,10 @@ class ChatViewModel @AssistedInject constructor(
     private val fbRefChatInfoObserver = FirebaseReferenceValueObserver()
 
     val messagesList = MediatorLiveData<MutableList<Message>>()
-    val newMessageText = MutableLiveData<String>()
+    val newMessageText = MutableLiveData("")
     val otherUser: LiveData<UserInfo> = _otherUser
     val chatInfo: LiveData<ChatInfo> = _chatInfo
+    val chatState = MutableStateFlow(ChatState.CHAT)
 
     val lazyListState = MutableStateFlow(LazyListState())
 
@@ -112,16 +123,48 @@ class ChatViewModel @AssistedInject constructor(
         }
     }
 
-    fun sendMessagePressed() {
-        if (!newMessageText.value.isNullOrBlank()) {
-            val newMsg = Message(senderID = myUserId, text = newMessageText.value!!)
-//            val chat = Chat(lastMessage = newMsg, info = ChatInfo(chatId, ))
-            dbRepository.updateNewMessage(chatId, newMsg)
-            checkAndUpdateUnreadMessages(newMsg)
-            newMessageText.value = null
-            viewModelScope.launch{
-                if(lazyListState.value.layoutInfo.totalItemsCount>=1){
-                    lazyListState.value.scrollToItem(lazyListState.value.layoutInfo.totalItemsCount - 1)
+    fun sendMessagePressed(
+        context: Context,
+        activity: Activity?,
+        newPhotoURI: Uri?
+    ) {
+        if(newPhotoURI == null){
+            if (!newMessageText.value.isNullOrBlank()) {
+                val newMsg = Message(senderID = myUserId, text = newMessageText.value!!)
+                dbRepository.updateNewMessage(chatId, newMsg)
+                checkAndUpdateUnreadMessages(newMsg)
+                newMessageText.value = ""
+            }
+        }
+        else{
+            val msg = Message(
+                senderID = myUserId,
+                text = newMessageText.value!!,
+            )
+            newMessageText.value = ""
+            storageRepository.uploadChatImage(
+                chatID = chatId,
+                byteArray = convertFileToByteArray(context, newPhotoURI)
+            ){result ->
+                if(result is Result.Success){
+                    val newMsg = msg.apply {
+                        imageUrl = result.data.toString()
+                    }
+                    dbRepository.updateNewMessage(chatId, newMsg)
+                    checkAndUpdateUnreadMessages(newMsg)
+                    newMessageText.value = ""
+                }
+                else if(result is Result.Error){
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        CmuToast.createFancyToast(
+                            context,
+                            activity,
+                            "Upload Failed",
+                            "Unable to upload Image",
+                            CmuToastStyle.ERROR,
+                            CmuToastDuration.SHORT
+                        )
+                    }, 200)
                 }
             }
         }
