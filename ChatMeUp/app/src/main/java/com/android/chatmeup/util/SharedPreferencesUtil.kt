@@ -2,7 +2,6 @@ package com.android.chatmeup.util
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.datastore.preferences.core.stringPreferencesKey
 
 object SharedPreferencesUtil {
     private const val PACKAGE_NAME = "com.android.chatmeup"
@@ -15,8 +14,8 @@ object SharedPreferencesUtil {
         return context.getSharedPreferences(PACKAGE_NAME, Context.MODE_PRIVATE)
     }
 
-    fun getUserID(context: Context): String? {
-        return getPrefs(context).getString(USER_ID, null)
+    fun getUserID(context: Context): String {
+        return getPrefs(context).getString(USER_ID, null) ?: ""
     }
 
     fun saveUserID(context: Context, userID: String) {

@@ -27,6 +27,12 @@ abstract class DefaultViewModel : ViewModel() {
                 result.data?.let { mutableLiveData?.value = it }
                 result.msg?.let { mSnackBarText.value = Event(it) }
             }
+
+            is Result.Changed -> {
+                mDataLoading.value = Event(false)
+                result.data?.let { mutableLiveData?.value = it }
+                result.msg?.let { mSnackBarText.value = Event(it) }
+            }
         }
     }
 }

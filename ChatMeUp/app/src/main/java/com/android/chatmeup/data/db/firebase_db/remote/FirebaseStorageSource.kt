@@ -1,4 +1,4 @@
-package com.android.chatmeup.data.db.remote
+package com.android.chatmeup.data.db.firebase_db.remote
 
 import android.net.Uri
 import com.google.android.gms.tasks.Task

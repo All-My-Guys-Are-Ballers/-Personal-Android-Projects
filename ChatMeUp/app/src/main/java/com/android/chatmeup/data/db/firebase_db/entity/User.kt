@@ -1,4 +1,4 @@
-package com.android.chatmeup.data.db.entity
+package com.android.chatmeup.data.db.firebase_db.entity
 
 import com.google.firebase.database.PropertyName
 
@@ -7,7 +7,8 @@ data class User(
     @get:PropertyName("info") @set:PropertyName("info") var info: UserInfo = UserInfo(),
     @get:PropertyName("friends") @set:PropertyName("friends") var friends: HashMap<String, UserFriend> = HashMap(),
     @get:PropertyName("notifications") @set:PropertyName("notifications") var notifications: HashMap<String, UserNotification> = HashMap(),
-    @get:PropertyName("sentRequests") @set:PropertyName("sentRequests") var sentRequests: HashMap<String, UserRequest> = HashMap()
+    @get:PropertyName("sentRequests") @set:PropertyName("sentRequests") var sentRequests: HashMap<String, UserRequest> = HashMap(),
+    @get:PropertyName("newMessages") @set:PropertyName("newMessages") var newMessages: HashMap<String, Message> = HashMap()
 )
 
 data class UserFriend(

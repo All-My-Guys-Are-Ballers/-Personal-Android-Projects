@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.ModalBottomSheetLayout
@@ -40,7 +41,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -56,9 +57,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.android.chatmeup.R
-import com.android.chatmeup.data.db.entity.ChatInfo
-import com.android.chatmeup.data.db.entity.Message
-import com.android.chatmeup.data.db.entity.UserInfo
+import com.android.chatmeup.data.db.firebase_db.entity.ChatInfo
+import com.android.chatmeup.data.db.firebase_db.entity.Message
+import com.android.chatmeup.data.db.firebase_db.entity.UserInfo
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
@@ -74,11 +75,10 @@ import com.android.chatmeup.ui.theme.neutral_disabled
 import com.android.chatmeup.ui.theme.seed
 import com.android.chatmeup.util.createTempImageFile
 import com.android.chatmeup.util.epochToHoursAndMinutes
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-@OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterialApi::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ChatScreen(
@@ -88,7 +88,8 @@ fun ChatScreen(
     chatId: String,
     userId: String,
     otherUserId: String,
-    onBackClicked: () -> Unit
+    onBackClicked: () -> Unit,
+    noOfUnreadMessages: String
 ) {
     val viewModel = chatViewModelProvider(
         chatId = chatId,
@@ -103,18 +104,12 @@ fun ChatScreen(
 
     val newMessageText by viewModel.newMessageText.observeAsState()
 
-    val lazyListState by viewModel.lazyListState.collectAsState()
-
-
+    val lazyListState = rememberLazyListState(messageList?.size?.minus(chatInfo?.no_of_unread_messages!!) ?: 0)
 
     val modalBottomSheetState =
         rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden,
             confirmValueChange = { it != ModalBottomSheetValue.HalfExpanded }
         )
-    
-//    var photoURI: Uri? by rememberSaveable {
-//        mutableStateOf(null)
-//    }
 
     var newPhotoURI: Uri? by rememberSaveable {
         mutableStateOf(null)
@@ -187,6 +182,14 @@ fun ChatScreen(
         } else {
             // Permission denied, show an error message
             CmuToast.createFancyToast(context, activity = activity, "Storage","Permission denied", CmuToastStyle.ERROR, CmuToastDuration.SHORT)
+        }
+    }
+
+    LaunchedEffect(messageList){
+        if(lazyListState.layoutInfo.totalItemsCount > noOfUnreadMessages.toInt()+1) {
+//            lazyListState.animateScrollToItem(
+//                lazyListState.layoutInfo.totalItemsCount - 1 - noOfUnreadMessages.toInt()
+//            )
         }
     }
 
@@ -283,6 +286,7 @@ fun ChatListScreen(
     context: Context,
     activity: Activity?,
 ){
+    val scope = rememberCoroutineScope()
     ModalBottomSheetLayout(
         sheetState = modalBottomSheetState,
         sheetBackgroundColor = MaterialTheme.colorScheme.background,
@@ -302,12 +306,16 @@ fun ChatListScreen(
             },
             bottomBar = {
                 ChatBottomBar(
-                    newPhotoURI = newPhotoUri,
                     messageText = newMessageText ?: "",
                     viewModel = viewModel,
                     onAddItemClicked = onAddItemClicked,
-                    context = context,
-                    activity = activity,
+                    onSendMessagePressed = {
+                        viewModel.sendMessagePressed(context,
+                        activity, newPhotoUri)
+//                        scope.launch {
+//                            lazyListState.animateScrollToItem(index = lazyListState.layoutInfo.totalItemsCount-1)
+//                        }
+                    }
                 )
             }
         ) { paddingValues ->
@@ -326,7 +334,6 @@ fun ChatListScreen(
                                 MessageItem(
                                     myUserId = userId,
                                     message = messageList[it],
-                                    seen = it < (messageList.size.minus(chatInfo?.no_of_unread_messages!!))
                                 )
                             }
                         }
@@ -341,7 +348,6 @@ fun ChatListScreen(
 fun MessageItem(
     myUserId: String,
     message: Message,
-    seen: Boolean,
 ){
     val isSender = myUserId == message.senderID
 
@@ -388,7 +394,7 @@ fun MessageItem(
                 Text(
                     text = "${epochToHoursAndMinutes(message.epochTimeMs)}${
                         if(isSender) {
-                            if(seen) "•Read" else "•Sent"
+                            if(message.seen) "•Read" else "•Sent"
                         } else ""
                     }",
                     modifier = Modifier.padding(horizontal = 10.dp),
@@ -439,12 +445,10 @@ fun ChatTopBar(otherUserInfo: UserInfo?,
 
 @Composable
 fun ChatBottomBar(
-    newPhotoURI: Uri?,
     messageText: String,
     viewModel: ChatViewModel,
     onAddItemClicked: () -> Unit,
-    context: Context,
-    activity: Activity?
+    onSendMessagePressed: () -> Unit,
 ) {
     Surface(color = MaterialTheme.colorScheme.background) {
         Row(
@@ -476,11 +480,7 @@ fun ChatBottomBar(
             )
 
             IconButton(onClick = {
-                viewModel.sendMessagePressed(
-                    context = context,
-                    activity = activity,
-                    newPhotoURI = newPhotoURI
-                )
+                onSendMessagePressed()
             }) {
                 Icon(
                     modifier = Modifier.size(24.dp),

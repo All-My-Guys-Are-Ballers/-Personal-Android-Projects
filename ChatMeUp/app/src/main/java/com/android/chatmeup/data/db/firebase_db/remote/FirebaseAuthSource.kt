@@ -1,4 +1,4 @@
-package com.android.chatmeup.data.db.remote
+package com.android.chatmeup.data.db.firebase_db.remote
 
 import com.fredrikbogg.android_chat_app.data.model.CreateUser
 import com.fredrikbogg.android_chat_app.data.model.Login

@@ -7,10 +7,10 @@ import android.os.Handler
 import android.os.Looper
 import com.android.chatmeup.data.Result
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
-import com.android.chatmeup.data.db.entity.User
-import com.android.chatmeup.data.db.repository.AuthRepository
-import com.android.chatmeup.data.db.repository.DatabaseRepository
-import com.android.chatmeup.data.db.repository.StorageRepository
+import com.android.chatmeup.data.db.firebase_db.entity.User
+import com.android.chatmeup.data.db.firebase_db.repository.AuthRepository
+import com.android.chatmeup.data.db.firebase_db.repository.DatabaseRepository
+import com.android.chatmeup.data.db.firebase_db.repository.StorageRepository
 import com.android.chatmeup.ui.DefaultViewModel
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration

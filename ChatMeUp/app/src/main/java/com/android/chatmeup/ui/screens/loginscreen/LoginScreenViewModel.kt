@@ -10,7 +10,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
-import com.android.chatmeup.data.db.repository.AuthRepository
+import com.android.chatmeup.data.db.firebase_db.repository.AuthRepository
 import com.android.chatmeup.ui.DefaultViewModel
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
@@ -19,8 +19,6 @@ import com.android.chatmeup.data.Result
 import com.android.chatmeup.util.SharedPreferencesUtil
 import com.fredrikbogg.android_chat_app.data.model.Login
 import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

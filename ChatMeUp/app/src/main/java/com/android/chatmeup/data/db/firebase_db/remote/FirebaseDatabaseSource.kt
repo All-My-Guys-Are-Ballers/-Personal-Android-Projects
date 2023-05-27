@@ -1,12 +1,12 @@
-package com.android.chatmeup.data.db.remote
+package com.android.chatmeup.data.db.firebase_db.remote
 
 import com.android.chatmeup.data.Result
-import com.android.chatmeup.data.db.entity.Chat
-import com.android.chatmeup.data.db.entity.Message
-import com.android.chatmeup.data.db.entity.User
-import com.android.chatmeup.data.db.entity.UserFriend
-import com.android.chatmeup.data.db.entity.UserNotification
-import com.android.chatmeup.data.db.entity.UserRequest
+import com.android.chatmeup.data.db.firebase_db.entity.Chat
+import com.android.chatmeup.data.db.firebase_db.entity.Message
+import com.android.chatmeup.data.db.firebase_db.entity.User
+import com.android.chatmeup.data.db.firebase_db.entity.UserFriend
+import com.android.chatmeup.data.db.firebase_db.entity.UserNotification
+import com.android.chatmeup.data.db.firebase_db.entity.UserRequest
 import com.android.chatmeup.util.wrapSnapshotToArrayList
 import com.android.chatmeup.util.wrapSnapshotToClass
 import com.google.android.gms.tasks.Task
@@ -17,6 +17,9 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class FirebaseReferenceConnectedObserver {
 
@@ -148,8 +151,9 @@ class FirebaseDataSource {
 
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
 
-            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
-
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                b.invoke(Result.Changed(wrapSnapshotToClass(resultClassName, snapshot)))
+            }
             override fun onChildRemoved(snapshot: DataSnapshot) {}
         })
     }
@@ -178,6 +182,10 @@ class FirebaseDataSource {
         refToPath("chats/$chatID/info/no_of_unread_messages").setValue(value)
     }
 
+    fun updateSeenMessage(chatID: String, messageID: String, value: Boolean){
+        refToPath("messages/$chatID/$messageID/seen").setValue(value)
+    }
+
     fun updateNewFriend(myUser: UserFriend, otherUser: UserFriend) {
         refToPath("users/${myUser.userID}/friends/${otherUser.userID}").setValue(otherUser)
         refToPath("users/${otherUser.userID}/friends/${myUser.userID}").setValue(myUser)
@@ -199,8 +207,10 @@ class FirebaseDataSource {
         refToPath("chats/${chat.info.id}").setValue(chat)
     }
 
-    fun pushNewMessage(messagesID: String, message: Message) {
-        refToPath("messages/$messagesID").push().setValue(message)
+    fun pushNewMessage(messagesID: String, receiverId: String, message: Message) {
+        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmssSSS", Locale.getDefault()).format(Date())
+        refToPath("messages/$messagesID/$timeStamp").setValue(message.apply { this.messageID = timeStamp })
+        refToPath("users/$receiverId/newMessages/$timeStamp").setValue(message.apply { this.messageID = timeStamp })
     }
 
     //endregion
@@ -280,6 +290,14 @@ class FirebaseDataSource {
         return src.task
     }
 
+    fun loadNewMessages(userID: String): Task<DataSnapshot> {
+        val src = TaskCompletionSource<DataSnapshot>()
+        val listener = attachValueListenerToTaskCompletion(src)
+        refToPath("users/$userID/newMessages").addListenerForSingleValueEvent(listener)
+        return src.task
+    }
+
+
     //endregion
 
     //region Value Observers
@@ -295,7 +313,7 @@ class FirebaseDataSource {
     }
 
     fun <T> attachUserFriendsObserver(resultClassName: Class<T>, userID: String, firebaseReferenceValueObserver: FirebaseReferenceValueObserver,
-                                            b: ((Result<MutableList<T>>) -> Unit)
+                                      b: ((Result<MutableList<T>>) -> Unit)
     ) {
         val listener = attachValueListenerToBlockWithList(resultClassName, b)
         firebaseReferenceValueObserver.start(listener, refToPath("users/$userID/friends"))

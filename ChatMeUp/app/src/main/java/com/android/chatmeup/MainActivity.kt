@@ -15,7 +15,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.navigation.compose.rememberNavController
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
-import com.android.chatmeup.data.db.repository.DatabaseRepository
+import com.android.chatmeup.data.db.firebase_db.repository.DatabaseRepository
 import com.android.chatmeup.ui.CmuApp
 import com.android.chatmeup.ui.screens.chat.viewmodel.ChatViewModel
 import com.android.chatmeup.ui.screens.homescreen.viewmodel.HomeViewModel

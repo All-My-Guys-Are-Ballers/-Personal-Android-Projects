@@ -48,8 +48,8 @@ fun NavGraphBuilder.chatGraph(
         arguments = listOf(
             navArgument("chatData") {
                 type = NavType.StringType
-                defaultValue = "<CHAT_ID>%%%<USER_ID>%%%<OTHER_USER_ID>"
-            }
+                defaultValue = "<CHAT_ID>%%%<USER_ID>%%%<OTHER_USER_ID>%%%<NO_OD_UNREAD_MESSAGES>"
+            },
         )
     ) { backStackEntry ->
         ChatScreen(
@@ -72,6 +72,11 @@ fun NavGraphBuilder.chatGraph(
             } catch (ex: Exception) {
                 ""
             },
+            noOfUnreadMessages = try{
+                backStackEntry.arguments?.getString("chatData")?.split("%%%")?.get(3) ?: ""
+            } catch (ex: Exception) {
+                ""
+            }
         )
     }
 }

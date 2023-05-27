@@ -1,4 +1,4 @@
-package com.android.chatmeup.data.db.entity
+package com.android.chatmeup.data.db.firebase_db.entity
 
 import com.google.firebase.database.PropertyName
 

@@ -53,7 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.chatmeup.R
-import com.android.chatmeup.data.db.entity.UserInfo
+import com.android.chatmeup.data.db.firebase_db.entity.UserInfo
 import com.android.chatmeup.data.model.ChatWithUserInfo
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
@@ -88,7 +88,7 @@ fun ChatListItem(
     onProfileImageClicked: () -> Unit
 ){
     Card(onClick = {
-        onNavigateToChat("${item.mChat.info.id}%%%${myUserId}%%%${item.mUserInfo.id}")
+        onNavigateToChat("${item.mChat.info.id}%%%${myUserId}%%%${item.mUserInfo.id}%%%${item.mChat.info.no_of_unread_messages}")
     },
         shape = RectangleShape,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)

@@ -4,7 +4,8 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
-import dagger.Binds
+import androidx.room.Room
+import com.android.chatmeup.data.db.room_db.ChatMeUpDatabase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -33,4 +34,15 @@ object DataStoreModule {
         return CmuDataStoreRepositoryImpl(dataStore)
     }
 
+    @Provides
+    @Singleton
+    fun provideChatMeUpDatabase(
+        @ApplicationContext context: Context,
+    ): ChatMeUpDatabase {
+        return Room.databaseBuilder(
+            context = context,
+            klass = ChatMeUpDatabase::class.java,
+            name = "ChatMeUp.db"
+        ).build()
+    }
 }

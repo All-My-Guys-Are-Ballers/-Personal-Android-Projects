@@ -14,14 +14,14 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.android.chatmeup.data.Result
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
-import com.android.chatmeup.data.db.entity.Chat
-import com.android.chatmeup.data.db.entity.ChatInfo
-import com.android.chatmeup.data.db.entity.Message
-import com.android.chatmeup.data.db.entity.UserInfo
-import com.android.chatmeup.data.db.remote.FirebaseReferenceChildObserver
-import com.android.chatmeup.data.db.remote.FirebaseReferenceValueObserver
-import com.android.chatmeup.data.db.repository.DatabaseRepository
-import com.android.chatmeup.data.db.repository.StorageRepository
+import com.android.chatmeup.data.db.firebase_db.entity.Chat
+import com.android.chatmeup.data.db.firebase_db.entity.ChatInfo
+import com.android.chatmeup.data.db.firebase_db.entity.Message
+import com.android.chatmeup.data.db.firebase_db.entity.UserInfo
+import com.android.chatmeup.data.db.firebase_db.remote.FirebaseReferenceChildObserver
+import com.android.chatmeup.data.db.firebase_db.remote.FirebaseReferenceValueObserver
+import com.android.chatmeup.data.db.firebase_db.repository.DatabaseRepository
+import com.android.chatmeup.data.db.firebase_db.repository.StorageRepository
 import com.android.chatmeup.ui.DefaultViewModel
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
@@ -29,10 +29,12 @@ import com.android.chatmeup.ui.cmutoast.CmuToastStyle
 import com.android.chatmeup.ui.screens.chat.data.ChatState
 import com.android.chatmeup.util.addNewItem
 import com.android.chatmeup.util.convertFileToByteArray
+import com.android.chatmeup.util.updateItemAt
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.MutableStateFlow
+import timber.log.Timber
 
 class ChatViewModel @AssistedInject constructor(
     @Assisted("chatId") private val chatId: String,
@@ -40,12 +42,14 @@ class ChatViewModel @AssistedInject constructor(
     @Assisted("otherUserId") private val otherUserId: String,
     private val cmuDataStoreRepository: CmuDataStoreRepository
 ) : DefaultViewModel() {
+    private val tag = Companion::class.java.simpleName
     private val dbRepository: DatabaseRepository = DatabaseRepository()
     private val storageRepository = StorageRepository()
 
     private val _otherUser: MutableLiveData<UserInfo> = MutableLiveData()
     private val _chatInfo: MutableLiveData<ChatInfo> = MutableLiveData()
     private val _addedMessage = MutableLiveData<Message>()
+    private val _updatedMessageInfo = MutableLiveData<Message>()
 
     private val fbRefMessagesChildObserver = FirebaseReferenceChildObserver()
     private val fbRefUserInfoObserver = FirebaseReferenceValueObserver()
@@ -113,13 +117,35 @@ class ChatViewModel @AssistedInject constructor(
 
     private fun loadAndObserveNewMessages() {
         messagesList.addSource(_addedMessage) { messagesList.addNewItem(it) }
+        messagesList.addSource(_updatedMessageInfo) {
+            try{
+                if(it.senderID == myUserId){
+                    messagesList.value?.let { it1 ->
+                        messagesList.updateItemAt(it, it1.indexOfFirst {it2 -> it.messageID == it2.messageID })
+                    }
+                }
+            }
+            catch (e: Exception){
+                Timber.tag(tag).e("Unable to update seen message Error: $e")
+            }
+        }
 
         dbRepository.loadAndObserveMessagesAdded(
             chatId,
             fbRefMessagesChildObserver
         ) { result: Result<Message> ->
-            onResult(_addedMessage, result)
             dbRepository.updateUnreadMessages(chatId, 0)
+            if(result is Result.Success){
+                onResult(_addedMessage, result)
+                result.data?.let{
+                    if (it.senderID == otherUserId && !it.seen) {
+                        dbRepository.updateSeenMessage(chatId, it.messageID, true)
+                    }
+                }
+            }
+            else if(result is Result.Changed){
+                onResult(_updatedMessageInfo, result)
+            }
         }
     }
 
@@ -131,7 +157,7 @@ class ChatViewModel @AssistedInject constructor(
         if(newPhotoURI == null){
             if (!newMessageText.value.isNullOrBlank()) {
                 val newMsg = Message(senderID = myUserId, text = newMessageText.value!!)
-                dbRepository.updateNewMessage(chatId, newMsg)
+                dbRepository.updateNewMessage(chatId, otherUserId, newMsg)
                 checkAndUpdateUnreadMessages(newMsg)
                 newMessageText.value = ""
             }
@@ -150,7 +176,7 @@ class ChatViewModel @AssistedInject constructor(
                     val newMsg = msg.apply {
                         imageUrl = result.data.toString()
                     }
-                    dbRepository.updateNewMessage(chatId, newMsg)
+                    dbRepository.updateNewMessage(chatId, otherUserId, newMsg)
                     checkAndUpdateUnreadMessages(newMsg)
                     newMessageText.value = ""
                 }

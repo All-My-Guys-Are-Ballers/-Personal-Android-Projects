@@ -37,7 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.android.chatmeup.R
-import com.android.chatmeup.data.db.entity.UserInfo
+import com.android.chatmeup.data.db.firebase_db.entity.UserInfo
 import com.android.chatmeup.data.model.ChatWithUserInfo
 import com.android.chatmeup.ui.screens.components.ProfilePicture
 import com.android.chatmeup.ui.screens.homescreen.components.BottomSheetScreen
@@ -263,7 +263,7 @@ fun HomeScreen(
                         onSearchTextValueChanged = { searchText = it },
                         list = chatsList,
                         myUserId = myUserId,
-                        onProfileImageClicked = {userInfo:UserInfo ->
+                        onProfileImageClicked = {userInfo: UserInfo ->
                             selectedImageTitle = userInfo.displayName
                             selectedImageUri = Uri.parse(userInfo.profileImageUrl)
                             currentBottomSheet = BottomSheetScreen.ProfileImage

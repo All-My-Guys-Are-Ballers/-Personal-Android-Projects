@@ -1,17 +1,17 @@
-package com.android.chatmeup.data.db.repository
+package com.android.chatmeup.data.db.firebase_db.repository
 
 import com.android.chatmeup.data.Result
-import com.android.chatmeup.data.db.entity.Chat
-import com.android.chatmeup.data.db.entity.ChatInfo
-import com.android.chatmeup.data.db.entity.Message
-import com.android.chatmeup.data.db.entity.User
-import com.android.chatmeup.data.db.entity.UserFriend
-import com.android.chatmeup.data.db.entity.UserInfo
-import com.android.chatmeup.data.db.entity.UserNotification
-import com.android.chatmeup.data.db.entity.UserRequest
-import com.android.chatmeup.data.db.remote.FirebaseDataSource
-import com.android.chatmeup.data.db.remote.FirebaseReferenceChildObserver
-import com.android.chatmeup.data.db.remote.FirebaseReferenceValueObserver
+import com.android.chatmeup.data.db.firebase_db.entity.Chat
+import com.android.chatmeup.data.db.firebase_db.entity.ChatInfo
+import com.android.chatmeup.data.db.firebase_db.entity.Message
+import com.android.chatmeup.data.db.firebase_db.entity.User
+import com.android.chatmeup.data.db.firebase_db.entity.UserFriend
+import com.android.chatmeup.data.db.firebase_db.entity.UserInfo
+import com.android.chatmeup.data.db.firebase_db.entity.UserNotification
+import com.android.chatmeup.data.db.firebase_db.entity.UserRequest
+import com.android.chatmeup.data.db.firebase_db.remote.FirebaseDataSource
+import com.android.chatmeup.data.db.firebase_db.remote.FirebaseReferenceChildObserver
+import com.android.chatmeup.data.db.firebase_db.remote.FirebaseReferenceValueObserver
 import com.android.chatmeup.util.wrapSnapshotToArrayList
 import com.android.chatmeup.util.wrapSnapshotToClass
 
@@ -28,8 +28,8 @@ class DatabaseRepository {
         firebaseDatabaseService.updateOnlineStatus(userID, status)
     }
 
-    fun updateNewMessage(messagesID: String, message: Message) {
-        firebaseDatabaseService.pushNewMessage(messagesID, message)
+    fun updateNewMessage(messagesID: String, receiverId: String, message: Message) {
+        firebaseDatabaseService.pushNewMessage(messagesID, receiverId, message)
     }
 
     fun updateNewUser(user: User) {
@@ -54,6 +54,10 @@ class DatabaseRepository {
 
     fun updateUnreadMessages(chatID: String, value: Int){
         firebaseDatabaseService.updateUnreadMessages(chatID, value)
+    }
+
+    fun updateSeenMessage(chatID: String, messageID: String, value: Boolean){
+        firebaseDatabaseService.updateSeenMessage(chatID, messageID, value)
     }
 
     fun updateNewChat(chat: Chat){
@@ -142,6 +146,16 @@ class DatabaseRepository {
             b.invoke(Result.Success(notificationsList))
         }.addOnFailureListener { b.invoke(Result.Error(it.message)) }
     }
+
+    fun loadNewMessages(userID: String, b: ((Result<MutableList<Message>>) -> Unit)) {
+        b.invoke(Result.Loading)
+        firebaseDatabaseService.loadNotificationsTask(userID).addOnSuccessListener {
+            val newMessagesList = wrapSnapshotToArrayList(Message::class.java, it)
+            b.invoke(Result.Success(newMessagesList))
+        }.addOnFailureListener { b.invoke(Result.Error(it.message)) }
+    }
+
+
 
     //endregion
 
