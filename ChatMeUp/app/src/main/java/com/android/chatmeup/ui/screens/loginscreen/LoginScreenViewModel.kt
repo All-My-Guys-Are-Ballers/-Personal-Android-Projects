@@ -9,19 +9,29 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
+import com.android.chatmeup.data.Result
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
 import com.android.chatmeup.data.db.firebase_db.repository.AuthRepository
+import com.android.chatmeup.data.db.firebase_db.repository.DatabaseRepository
+import com.android.chatmeup.data.db.room_db.ChatMeUpDatabase
+import com.android.chatmeup.data.db.room_db.data.MessageStatus
+import com.android.chatmeup.data.db.room_db.entity.Chat
+import com.android.chatmeup.data.db.room_db.entity.Contact
+import com.android.chatmeup.data.db.room_db.entity.Message
 import com.android.chatmeup.ui.DefaultViewModel
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
-import com.android.chatmeup.data.Result
-import com.android.chatmeup.util.SharedPreferencesUtil
+import com.android.chatmeup.util.convertTwoUserIDs
 import com.fredrikbogg.android_chat_app.data.model.Login
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -30,87 +40,230 @@ import javax.inject.Inject
 enum class LoginStatus{
     INIT,
     LOADING,
+    LOADING_DATA,
     DONE,
     ERROR,
+    ERROR_LOADING_DATA
 }
 
 @HiltViewModel
-class LoginScreenViewModel @Inject constructor(cmuDataStoreRepository: CmuDataStoreRepository) : DefaultViewModel(){
-    var cmuDataStoreRepository: CmuDataStoreRepository? = null
-    val tag: String = "LoginScreenViewModel"
+class LoginScreenViewModel @Inject constructor(
+    private val cmuDataStoreRepository: CmuDataStoreRepository,
+    private val chatMeUpDatabase: ChatMeUpDatabase,
+) : DefaultViewModel() {
+    private val tag: String = "LoginScreenViewModel"
+
     val loginEventStatus = MutableStateFlow(LoginStatus.INIT)
+
     private val authRepository = AuthRepository()
-    val loginCredentials = MutableStateFlow("")
 
+    private val dbRepository = DatabaseRepository()
 
-    init {
-        this.cmuDataStoreRepository = cmuDataStoreRepository
-    }
+    private val loginCredentials = MutableStateFlow("")
 
+    private val _loadingMsg = MutableStateFlow("Loading...")
+    val loadingMsg = _loadingMsg.asStateFlow()
+
+    private var myUserID: String? = null
+
+    private val ioScope = CoroutineScope(Dispatchers.IO + Job())
 
     fun onEventTriggered(
-        activity: Activity?,
-        context: Context,
-        event: LoginEvents,
-        email: String = "",
-        password: String = "",
-        onLoggedIn: () -> Unit = {},
-        myUserId: String? = "",
-    ){
-        when(event){
+        event: LoginScreenViewModel.LoginEvents,
+    ) {
+        when (event) {
             LoginEvents.InitLoginEvent -> {
                 loginEventStatus.value = LoginStatus.INIT
             }
-            LoginEvents.LoadingEvent -> {
+
+            is LoginEvents.LoadingEvent -> {
                 loginEventStatus.value = LoginStatus.LOADING
                 login(
-                    email = email,
-                    password = password,
-                    context = context,
-                    activity = activity,
-                    onLoggedIn = onLoggedIn
+                    email = event.email,
+                    password = event.password,
+                    context = event.context,
+                    activity = event.activity,
+                    onDataLoaded = {
+                        onEventTriggered(
+                            event = LoginEvents.LoadAllData(
+                                event.context,
+                                event.activity,
+                                event.onDataLoaded
+                            ),
+                        )
+                        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                            myUserID?.let { dbRepository.updateFCMToken(it, task.result) }
+                        }
+                    }
                 )
             }
-            LoginEvents.ErrorEvent -> {
+
+            is LoginEvents.ErrorEvent -> {
                 loginEventStatus.value = LoginStatus.ERROR
                 Handler(Looper.getMainLooper()).postDelayed({
                     CmuToast.createFancyToast(
-                        context,
-                        activity,
+                        event.context,
+                        event.activity,
                         "Login Error",
-                        "Invalid Username or Password",
+                        event.errorMsg ?: "Unknown Error, Please contact Support",
                         CmuToastStyle.ERROR,
                         CmuToastDuration.SHORT
                     )
                 }, 200)
-                onEventTriggered(
-                    activity, context, LoginEvents.InitLoginEvent
-                )
+                Timber.tag(tag).d("Login Error ${event.errorMsg}")
+
+//                onEventTriggered(
+//                    LoginEvents.InitLoginEvent
+//                )
             }
-            LoginEvents.DoneEvent -> {
+
+            is LoginEvents.DoneEvent -> {
                 loginEventStatus.value = LoginStatus.DONE
-                try{ saveUserId(context, myUserId!!) }
-                catch(e: Exception){
+                try {
+                    saveUserId(event.myUserId)
+                } catch (e: Exception) {
                     Timber.tag(tag).d("Error: $e")
                 }
-                onLoggedIn()
+            }
+
+            is LoginEvents.LoadAllData -> {
+                loginEventStatus.value = LoginStatus.LOADING_DATA
+                loadAllData(
+                    event.context,
+                    event.activity,
+                    event.onDataLoaded
+                )
+            }
+
+            is LoginEvents.ErrorLoadingData -> TODO()
+        }
+    }
+
+    private fun saveUserId(value: String) = viewModelScope.launch {
+        cmuDataStoreRepository.saveUserId(value)
+    }
+
+    private fun loadMessages(chatID: String){
+        dbRepository.loadMessages(chatID){result ->
+            when(result){
+                is Result.Error -> {
+                    Timber.tag(tag).e("Unable to load Messages for $chatID")
+                }
+                Result.Loading -> {
+                    Timber.tag(tag).d("Loading Messages for $chatID")
+                }
+                is Result.Success -> {
+                    result.data?.let{messageList ->
+                        messageList.forEach{message ->
+                            ioScope.launch{
+                                chatMeUpDatabase.messageDao.upsertMessage(
+                                    Message(
+                                        messageId = chatID + message.messageID,
+                                        chatID = chatID,
+                                        messageText = message.text,
+                                        messageTime = message.epochTimeMs,
+                                        senderId = message.senderID,
+                                        messageStatus = MessageStatus.UNSENT
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
-    private fun saveUserId(context: Context, value: String) {
-        SharedPreferencesUtil.saveUserID(context, value)
+    private fun loadChat(otherUserID: String) {
+        try {
+            dbRepository.loadChat(
+                convertTwoUserIDs(
+                    otherUserID,
+                    myUserID!!
+                )
+            ) { chatResult ->
+                when (chatResult) {
+                    is Result.Error -> TODO()
+                    Result.Loading -> TODO()
+                    is Result.Success -> {
+                        chatResult.data?.let{chat ->
+                            ioScope.launch{
+                                chatMeUpDatabase.chatDao.upsertChat(
+                                    Chat(
+                                        id = chat.info.id,
+                                        no_of_unread_messages = chat.info.no_of_unread_messages,
+                                        lastMessageTime = chat.lastMessage.epochTimeMs,
+                                        lastMessageText = chat.lastMessage.text,
+                                        messageType = enumValueOf(chat.lastMessage.messageType),
+                                        lastMessageSenderID = chat.lastMessage.senderID
+                                    )
+                                )
+                            }
+                            loadMessages(chatID = chat.info.id)
+                        } ?: {
+                            Timber.tag(tag).e("Unable to load Chat for ${
+                                convertTwoUserIDs(
+                                    otherUserID,
+                                    myUserID!!)
+                            }")
+                        }
+                    }
+                }
+            }
+        } catch (e: NullPointerException) {
+            Timber.tag(tag).e("myUserId is null $e")
+        }
+        catch (e: Exception) {
+            // it should never reach these
+            Timber.tag(tag).e("Unknown Error $e")
+        }
+    }
+
+    private fun loadAllData(
+        context: Context,
+        activity: Activity?,
+        onDataLoaded: () -> Unit
+    ){
+        myUserID?.let {
+            dbRepository.loadFriends(it){result ->
+                when(result){
+                    is Result.Success -> {
+                        result.data?.let {contactList ->
+                            contactList.forEach { contact ->
+                                ioScope.launch{
+                                    chatMeUpDatabase.contactDao.upsertContact(Contact(contact.userID))
+                                }
+                                loadChat(otherUserID = contact.userID)
+                            }
+                        }
+                        onEventTriggered(LoginEvents.DoneEvent(it))
+                        onDataLoaded()
+                    }
+                    is Result.Error -> {
+                        onEventTriggered(
+                            event = LoginEvents.ErrorEvent(activity, context, result.msg)
+                        )
+                    }
+                    Result.Loading -> {
+                        loginEventStatus.value = LoginStatus.LOADING_DATA
+                        _loadingMsg.value = "Loading Chats"
+                    }
+                }
+            }
+        }?: {
+            onEventTriggered(LoginEvents.ErrorEvent(activity, context, "UserId is null"))
+        }
     }
 
     @WorkerThread
     private fun saveLoginCredentials(value: String) = viewModelScope.launch(Dispatchers.IO) {
-        cmuDataStoreRepository?.saveLoginCredentials(value)
+        cmuDataStoreRepository.saveLoginCredentials(value)
     }
 
     @WorkerThread
     fun getLoginCredentials() = viewModelScope.launch (
         Dispatchers.IO) {
-        cmuDataStoreRepository?.getLoginCredentials()?.collect { state ->
+        cmuDataStoreRepository.getLoginCredentials().collect { state ->
             withContext(Dispatchers.IO) {
                 loginCredentials.value = state
             }
@@ -122,7 +275,7 @@ class LoginScreenViewModel @Inject constructor(cmuDataStoreRepository: CmuDataSt
         password: String,
         activity: Activity?,
         context: Context,
-        onLoggedIn: () -> Unit
+        onDataLoaded: () -> Unit
     ) {
         val login = Login(email, password)
 
@@ -130,24 +283,28 @@ class LoginScreenViewModel @Inject constructor(cmuDataStoreRepository: CmuDataSt
             onResult(null, result)
             if (result is Result.Success) {
 //                saveUserId(result.data?.uid)
-                onEventTriggered(
-                    activity = activity,
-                    context = context,
-                    event = LoginEvents.DoneEvent,
-                    onLoggedIn = onLoggedIn,
-                    myUserId = result.data?.uid
-                )
+                result.data?.let{
+                    myUserID = it.uid
+                    onEventTriggered(
+                        event = LoginEvents.LoadAllData(
+                            context = context,
+                            activity = activity,
+                            onDataLoaded = onDataLoaded
+                        )
+                    )
+                }
             }
             else if (result is Result.Error) {
                 onEventTriggered(
-                    activity = activity,
-                    context = context,
-                    event = LoginEvents.ErrorEvent,
-                    onLoggedIn = onLoggedIn,
+                    event = LoginEvents.ErrorEvent(
+                        context = context,
+                        activity = activity,
+                        errorMsg = result.msg
+                    ),
                 )
             }
-            else {
-//                Timber.tag(tag).d("Still Loading")
+            else if(result is Result.Loading) {
+                Timber.tag(tag).d("Logging In")
             }
         }
     }
@@ -156,9 +313,31 @@ class LoginScreenViewModel @Inject constructor(cmuDataStoreRepository: CmuDataSt
 
     sealed class LoginEvents(){
         object InitLoginEvent: LoginEvents()
-        object LoadingEvent: LoginEvents()
-        object ErrorEvent: LoginEvents()
-        object DoneEvent: LoginEvents()
+        data class LoadingEvent(
+            val activity: Activity?,
+            val context: Context,
+            val email: String,
+            val password: String ,
+            val onDataLoaded : () -> Unit
+        ): LoginEvents()
+        data class ErrorEvent(
+            val activity: Activity?,
+            val context: Context,
+            val errorMsg : String?
+        ): LoginEvents()
+        data class DoneEvent(
+            val myUserId: String,
+            ): LoginEvents()
+        data class LoadAllData(
+            val context: Context,
+            val activity: Activity?,
+            val onDataLoaded: () -> Unit
+        ) : LoginEvents()
+        data class ErrorLoadingData(
+            val context: Context,
+            val activity: Activity?,
+            val errorMsg: String?
+        ) : LoginEvents()
     }
 
     interface Factory {

@@ -27,11 +27,14 @@ import com.android.chatmeup.util.addNewItem
 import com.android.chatmeup.util.convertTwoUserIDs
 import com.android.chatmeup.util.removeItem
 import com.android.chatmeup.util.updateItemAt
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 enum class HomeEventState{
@@ -49,7 +52,7 @@ enum class AddContactEventState{
 }
 
 class HomeViewModel @AssistedInject constructor(
-    @Assisted("myUserId") private val myUserId: String,
+    @Assisted("myUserId") var myUserId: String,
     private val cmuDataStoreRepository: CmuDataStoreRepository
 ): DefaultViewModel() {
     private val tag = "HomeViewModel"
@@ -72,6 +75,7 @@ class HomeViewModel @AssistedInject constructor(
     val notificationListWithUserInfo = MediatorLiveData<MutableList<UserInfo>>()
 
     init {
+        myUserId = Firebase.auth.currentUser?.uid ?: ""
         chatsList.addSource(_updatedChatWithUserInfo) { newChat ->
             val chat = chatsList.value?.find { it.mChat.info.id == newChat.mChat.info.id }
             if (chat == null) {
@@ -95,6 +99,12 @@ class HomeViewModel @AssistedInject constructor(
 
     private fun setupChats() {
         loadAndObserveFriends()
+    }
+
+    private fun loadUserID() = viewModelScope.launch {
+        cmuDataStoreRepository.getUserId().collect{
+            myUserId = it
+        }
     }
 
     private fun loadAndObserveMyInfo() {

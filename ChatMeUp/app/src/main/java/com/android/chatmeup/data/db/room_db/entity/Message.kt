@@ -11,9 +11,10 @@ import com.android.chatmeup.data.db.room_db.data.MessageStatusEnumConverter
 @TypeConverters(MessageStatusEnumConverter::class)
 data class Message(
     @PrimaryKey
-    val messageId: String,
+    val messageId: String, //chatId + messageId
     val messageText: String,
     val messageTime: Long,
     val senderId: String,
-    val messageStatus: MessageStatus
+    val messageStatus: MessageStatus,
+    val chatID: String,
 )

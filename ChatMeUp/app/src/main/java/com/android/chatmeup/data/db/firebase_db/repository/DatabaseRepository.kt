@@ -28,8 +28,12 @@ class DatabaseRepository {
         firebaseDatabaseService.updateOnlineStatus(userID, status)
     }
 
-    fun updateNewMessage(messagesID: String, receiverId: String, message: Message) {
-        firebaseDatabaseService.pushNewMessage(messagesID, receiverId, message)
+    fun updateFCMToken(userID: String, token: String){
+        firebaseDatabaseService.updateFCMToken(userID, token)
+    }
+
+    fun updateNewMessage(messagesID: String, message: Message) {
+        firebaseDatabaseService.pushNewMessage(messagesID, message)
     }
 
     fun updateNewUser(user: User) {
@@ -136,6 +140,14 @@ class DatabaseRepository {
         firebaseDatabaseService.loadFriendsTask(userID).addOnSuccessListener {
             val friendsList = wrapSnapshotToArrayList(UserFriend::class.java, it)
             b.invoke(Result.Success(friendsList))
+        }.addOnFailureListener { b.invoke(Result.Error(it.message)) }
+    }
+
+    fun loadMessages(chatID: String, b: ((Result<List<Message>>) -> Unit)){
+        b.invoke(Result.Loading)
+        firebaseDatabaseService.loadMessagesTask(chatID).addOnSuccessListener {
+            val messagesList = wrapSnapshotToArrayList(Message::class.java, it)
+            b.invoke(Result.Success(messagesList))
         }.addOnFailureListener { b.invoke(Result.Error(it.message)) }
     }
 

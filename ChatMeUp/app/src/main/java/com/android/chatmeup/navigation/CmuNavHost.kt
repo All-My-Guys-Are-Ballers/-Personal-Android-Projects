@@ -33,7 +33,6 @@ fun CmuNavHost(
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit,
 //    onBackPressedDispatcher: OnBackPressedDispatcher,
-    myUserId: String,
 ) {
 
     NavHost(
@@ -65,7 +64,6 @@ fun CmuNavHost(
             factory = EntryPointAccessors.fromActivity(
                 context as Activity, MainActivity.ViewModelFactoryProvider::class.java
             ).homeViewModelFactory(),
-            myUserId = myUserId,
             onNavigateToChat = { backStackEntry, s ->
                 onNavigateToDestination(
                     backStackEntry,

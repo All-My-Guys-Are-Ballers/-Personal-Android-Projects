@@ -22,7 +22,6 @@ fun NavGraphBuilder.homeGraph(
     context: Context,
     activity: Activity?,
     factory: HomeViewModel.Factory,
-    myUserId: String,
     onNavigateToChat: (NavBackStackEntry, String) -> Unit,
     onNavigateToLogin: (NavBackStackEntry) -> Unit,
     onNavigateToSettings: (NavBackStackEntry) -> Unit
@@ -34,7 +33,6 @@ fun NavGraphBuilder.homeGraph(
             context = context,
             activity = activity,
             factory = factory,
-            myUserId = myUserId,
             onNavigateToChat = {
                 onNavigateToChat(navBackStackEntry, it)
             },

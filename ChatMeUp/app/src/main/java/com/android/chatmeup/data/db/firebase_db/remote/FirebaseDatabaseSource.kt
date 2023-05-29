@@ -151,9 +151,7 @@ class FirebaseDataSource {
 
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
 
-            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                b.invoke(Result.Changed(wrapSnapshotToClass(resultClassName, snapshot)))
-            }
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
             override fun onChildRemoved(snapshot: DataSnapshot) {}
         })
     }
@@ -172,6 +170,10 @@ class FirebaseDataSource {
 
     fun updateOnlineStatus(userID: String, status: Boolean){
         refToPath("users/$userID/info/online").setValue(status)
+    }
+
+    fun updateFCMToken(userID: String, token: String){
+        refToPath("users/$userID/info/fcmToken").setValue(token)
     }
 
     fun updateLastMessage(chatID: String, chat: Chat) {
@@ -207,10 +209,9 @@ class FirebaseDataSource {
         refToPath("chats/${chat.info.id}").setValue(chat)
     }
 
-    fun pushNewMessage(messagesID: String, receiverId: String, message: Message) {
+    fun pushNewMessage(messagesID: String, message: Message) {
         val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmssSSS", Locale.getDefault()).format(Date())
         refToPath("messages/$messagesID/$timeStamp").setValue(message.apply { this.messageID = timeStamp })
-        refToPath("users/$receiverId/newMessages/$timeStamp").setValue(message.apply { this.messageID = timeStamp })
     }
 
     //endregion
@@ -276,6 +277,13 @@ class FirebaseDataSource {
         return src.task
     }
 
+    fun loadMessagesTask(chatID: String): Task<DataSnapshot> {
+        val src = TaskCompletionSource<DataSnapshot>()
+        val listener = attachValueListenerToTaskCompletion(src)
+        refToPath("messages/$chatID").addListenerForSingleValueEvent(listener)
+        return src.task
+    }
+
     fun loadChatTask(chatID: String): Task<DataSnapshot> {
         val src = TaskCompletionSource<DataSnapshot>()
         val listener = attachValueListenerToTaskCompletion(src)
@@ -289,15 +297,6 @@ class FirebaseDataSource {
         refToPath("users/$userID/notifications").addListenerForSingleValueEvent(listener)
         return src.task
     }
-
-    fun loadNewMessages(userID: String): Task<DataSnapshot> {
-        val src = TaskCompletionSource<DataSnapshot>()
-        val listener = attachValueListenerToTaskCompletion(src)
-        refToPath("users/$userID/newMessages").addListenerForSingleValueEvent(listener)
-        return src.task
-    }
-
-
     //endregion
 
     //region Value Observers

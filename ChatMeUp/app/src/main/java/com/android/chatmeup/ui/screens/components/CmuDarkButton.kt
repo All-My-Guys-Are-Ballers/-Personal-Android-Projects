@@ -6,10 +6,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import com.android.chatmeup.ui.theme.cmuOffWhite
 
@@ -19,6 +24,7 @@ fun CmuDarkButton(
     padding: PaddingValues = PaddingValues(start = 80.dp, end = 80.dp),
     label: String,
     isLoading: Boolean = false,
+    shape: Shape = RoundedCornerShape(10.dp),
     onClick: () -> Unit
 ){
     Button(modifier = modifier
@@ -32,8 +38,8 @@ fun CmuDarkButton(
             defaultElevation = 0.dp,
             pressedElevation = 5.dp,
             disabledElevation = 0.dp),
+        shape = shape,
 //                ), colors = ButtonDefaults.buttonColors(backgroundColor = cmuBlue),
-        shape = RoundedCornerShape(10.dp)
     ) {
         if (isLoading){
             CircularProgressIndicator(

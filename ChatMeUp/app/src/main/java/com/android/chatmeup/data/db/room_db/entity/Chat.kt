@@ -14,5 +14,6 @@ data class Chat(
     val no_of_unread_messages: Int,
     val lastMessageText: String,
     val lastMessageTime: Long,
-    val messageType: MessageType
+    val messageType: MessageType,
+    val lastMessageSenderID: String
 )

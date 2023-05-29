@@ -29,12 +29,10 @@ import com.android.chatmeup.ui.cmutoast.CmuToastStyle
 import com.android.chatmeup.ui.screens.chat.data.ChatState
 import com.android.chatmeup.util.addNewItem
 import com.android.chatmeup.util.convertFileToByteArray
-import com.android.chatmeup.util.updateItemAt
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.MutableStateFlow
-import timber.log.Timber
 
 class ChatViewModel @AssistedInject constructor(
     @Assisted("chatId") private val chatId: String,
@@ -117,18 +115,6 @@ class ChatViewModel @AssistedInject constructor(
 
     private fun loadAndObserveNewMessages() {
         messagesList.addSource(_addedMessage) { messagesList.addNewItem(it) }
-        messagesList.addSource(_updatedMessageInfo) {
-            try{
-                if(it.senderID == myUserId){
-                    messagesList.value?.let { it1 ->
-                        messagesList.updateItemAt(it, it1.indexOfFirst {it2 -> it.messageID == it2.messageID })
-                    }
-                }
-            }
-            catch (e: Exception){
-                Timber.tag(tag).e("Unable to update seen message Error: $e")
-            }
-        }
 
         dbRepository.loadAndObserveMessagesAdded(
             chatId,
@@ -143,9 +129,6 @@ class ChatViewModel @AssistedInject constructor(
                     }
                 }
             }
-            else if(result is Result.Changed){
-                onResult(_updatedMessageInfo, result)
-            }
         }
     }
 
@@ -157,7 +140,7 @@ class ChatViewModel @AssistedInject constructor(
         if(newPhotoURI == null){
             if (!newMessageText.value.isNullOrBlank()) {
                 val newMsg = Message(senderID = myUserId, text = newMessageText.value!!)
-                dbRepository.updateNewMessage(chatId, otherUserId, newMsg)
+                dbRepository.updateNewMessage(chatId, newMsg)
                 checkAndUpdateUnreadMessages(newMsg)
                 newMessageText.value = ""
             }
@@ -176,7 +159,7 @@ class ChatViewModel @AssistedInject constructor(
                     val newMsg = msg.apply {
                         imageUrl = result.data.toString()
                     }
-                    dbRepository.updateNewMessage(chatId, otherUserId, newMsg)
+                    dbRepository.updateNewMessage(chatId, newMsg)
                     checkAndUpdateUnreadMessages(newMsg)
                     newMessageText.value = ""
                 }

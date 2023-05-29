@@ -55,7 +55,7 @@ class MainActivity : ComponentActivity() {
 
         chatMeUpApp = applicationContext as CmuApplication
 
-        dbRepository.updateOnlineStatus(chatMeUpApp.myUserID, true)
+        Firebase.auth.currentUser?.let {  dbRepository.updateOnlineStatus(it.uid, true)}
 
         setContent {
             val systemUiController = rememberSystemUiController()
@@ -80,7 +80,6 @@ class MainActivity : ComponentActivity() {
                 ) {
                     CmuApp(
                         chatMeUpApp = chatMeUpApp,
-//                        onBackPressedDispatcher = onBackPressedDispatcher
                     )
                 }
             }
@@ -90,11 +89,11 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         chatMeUpApp.setCurrentActivity(this)
-        if(Firebase.auth.currentUser != null){ dbRepository.updateOnlineStatus(chatMeUpApp.myUserID, true) }
+        Firebase.auth.currentUser?.let {  dbRepository.updateOnlineStatus(it.uid, true)}
     }
     override fun onPause() {
         super.onPause()
         chatMeUpApp.setCurrentActivity(this)
-        if(Firebase.auth.currentUser != null){ dbRepository.updateOnlineStatus(chatMeUpApp.myUserID, false) }
+        Firebase.auth.currentUser?.let {  dbRepository.updateOnlineStatus(it.uid, true)}
     }
 }

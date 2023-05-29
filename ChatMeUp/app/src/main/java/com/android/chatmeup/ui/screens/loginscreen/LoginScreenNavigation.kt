@@ -5,7 +5,6 @@ import android.content.Context
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
-import com.android.chatmeup.data.datastore.CmuDataStoreRepository
 import com.android.chatmeup.navigation.CmuNavigationDestination
 
 object LoginDestination : CmuNavigationDestination {
@@ -26,7 +25,7 @@ fun NavGraphBuilder.loginGraph(
         LoginScreen(
             context = context,
             activity = activity,
-            onLoggedIn = {
+            onDataLoaded = {
                 onLoggedIn(navBackStackEntry)
             },
             onClickRegister = {

@@ -51,7 +51,6 @@ import com.android.chatmeup.ui.screens.homescreen.viewmodel.homeViewModelProvide
 import com.android.chatmeup.ui.theme.md_theme_dark_background
 import com.android.chatmeup.ui.theme.md_theme_light_background
 import com.android.chatmeup.ui.theme.neutral_disabled
-import com.android.chatmeup.util.SharedPreferencesUtil
 import com.google.accompanist.pager.*
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.firebase.auth.ktx.auth
@@ -66,7 +65,6 @@ fun HomeScreen(
     activity: Activity?,
 //    onBackPressedDispatcher: OnBackPressedDispatcher,
     factory: HomeViewModel.Factory,
-    myUserId: String,
     onNavigateToChat: (String) -> Unit,
     onNavigateToLogin: () -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -74,11 +72,9 @@ fun HomeScreen(
     val systemUiController = rememberSystemUiController()
     //change status bar color anytime we change light mode or dark mode
 
-    val myUserID = SharedPreferencesUtil.getUserID(context)
-
     val viewModel: HomeViewModel = homeViewModelProvider(
         factory = factory,
-        myUserId = myUserID!!
+        myUserId = ""
     )
 
     val myUserInfo by viewModel.myUpdatedInfo.observeAsState()
@@ -262,7 +258,7 @@ fun HomeScreen(
                         searchTextValue = searchText,
                         onSearchTextValueChanged = { searchText = it },
                         list = chatsList,
-                        myUserId = myUserId,
+                        myUserId = viewModel.myUserId,
                         onProfileImageClicked = {userInfo: UserInfo ->
                             selectedImageTitle = userInfo.displayName
                             selectedImageUri = Uri.parse(userInfo.profileImageUrl)
