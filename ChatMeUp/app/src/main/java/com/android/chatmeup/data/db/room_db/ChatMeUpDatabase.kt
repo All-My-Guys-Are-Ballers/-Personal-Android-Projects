@@ -11,7 +11,7 @@ import com.android.chatmeup.data.db.room_db.entity.Message
 
 @Database(
     entities = [Chat::class, Message::class, Contact::class],
-    version = 1
+    version = 2
 )
 abstract class ChatMeUpDatabase: RoomDatabase() {
     abstract val chatDao: ChatDao

@@ -15,8 +15,11 @@ interface MessageDao{
     @Delete
     fun deleteMessage(message: Message)
 
-    @Query("SELECT * FROM message WHERE :chatId = chatID ORDER BY messageTime DESC")
-    fun getMessagesOrderedByTime(chatId: String): Flow<List<Message>>
+    @Query("SELECT * FROM message WHERE :messageID = messageId")
+    fun getMessage(messageID: String): Message
+
+    @Query("SELECT * FROM message WHERE :chatID = chatID ORDER BY messageTime DESC")
+    fun getMessagesOrderedByTime(chatID: String): Flow<List<Message>>
 
     @Query("SELECT * FROM message WHERE messageText LIKE :searchText ORDER BY messageTime DESC")
     fun searchMessagesOrderedByTime(searchText: String): Flow<List<Message>>

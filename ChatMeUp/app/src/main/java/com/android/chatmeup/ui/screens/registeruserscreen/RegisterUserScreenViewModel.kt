@@ -172,10 +172,11 @@ class RegisterUserScreenViewModel @Inject constructor(private val cmuDataStoreRe
             onResult(null, result)
             if (result is Result.Success) {
                 result.data?.uid?.let {uid ->
-                    if(imageUri != null){
+                    val imageByteArray = convertFileToByteArray(context, imageUri)
+                    if(imageByteArray != null){
                         storageRepository.updateUserProfileImage(
                             uid,
-                            byteArray = convertFileToByteArray(context, imageUri)
+                            byteArray = imageByteArray
                         ) { uploadResult: Result<Uri> ->
                             onResult(null, uploadResult)
                             if (uploadResult is Result.Success) {

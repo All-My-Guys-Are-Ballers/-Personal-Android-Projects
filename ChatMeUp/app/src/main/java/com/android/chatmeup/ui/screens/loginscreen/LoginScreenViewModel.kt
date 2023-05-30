@@ -162,13 +162,18 @@ class LoginScreenViewModel @Inject constructor(
                                         chatID = chatID,
                                         messageText = message.text,
                                         messageTime = message.epochTimeMs,
-                                        senderId = message.senderID,
-                                        messageStatus = MessageStatus.UNSENT
+                                        senderID = message.senderID,
+                                        messageStatus = MessageStatus.UNSENT,
+                                        lowQualityThumbnail = message.lowQualityThumbnail,
                                     )
                                 )
                             }
                         }
                     }
+                }
+
+                is Result.Progress -> {
+                    //do nothing
                 }
             }
         }
@@ -183,8 +188,12 @@ class LoginScreenViewModel @Inject constructor(
                 )
             ) { chatResult ->
                 when (chatResult) {
-                    is Result.Error -> TODO()
-                    Result.Loading -> TODO()
+                    is Result.Error -> {
+                        Timber.tag(tag).d("Unable to load chat errorMsg: ${chatResult.msg}")
+                    }
+                    Result.Loading -> {
+                        //do nothing for now
+                    }
                     is Result.Success -> {
                         chatResult.data?.let{chat ->
                             ioScope.launch{
@@ -207,6 +216,10 @@ class LoginScreenViewModel @Inject constructor(
                                     myUserID!!)
                             }")
                         }
+                    }
+
+                    is Result.Progress -> {
+                        //do nothing
                     }
                 }
             }
@@ -247,6 +260,10 @@ class LoginScreenViewModel @Inject constructor(
                     Result.Loading -> {
                         loginEventStatus.value = LoginStatus.LOADING_DATA
                         _loadingMsg.value = "Loading Chats"
+                    }
+
+                    is Result.Progress -> {
+                        //do nothing
                     }
                 }
             }

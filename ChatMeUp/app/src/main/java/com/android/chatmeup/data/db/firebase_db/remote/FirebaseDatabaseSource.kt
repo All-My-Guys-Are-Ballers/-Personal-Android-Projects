@@ -17,9 +17,6 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class FirebaseReferenceConnectedObserver {
 
@@ -209,15 +206,12 @@ class FirebaseDataSource {
         refToPath("chats/${chat.info.id}").setValue(chat)
     }
 
-    fun pushNewMessage(messagesID: String, message: Message) {
-        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmssSSS", Locale.getDefault()).format(Date())
-        refToPath("messages/$messagesID/$timeStamp").setValue(message.apply { this.messageID = timeStamp })
+    fun pushNewMessage(chatID: String, message: Message) {
+        refToPath("messages/$chatID/${message.messageID}").setValue(message)
     }
-
     //endregion
 
     //region Remove
-
     fun removeNotification(userID: String, notificationID: String) {
         refToPath("users/${userID}/notifications/$notificationID").setValue(null)
     }
@@ -281,6 +275,13 @@ class FirebaseDataSource {
         val src = TaskCompletionSource<DataSnapshot>()
         val listener = attachValueListenerToTaskCompletion(src)
         refToPath("messages/$chatID").addListenerForSingleValueEvent(listener)
+        return src.task
+    }
+
+    fun loadMessageTask(chatID: String, messageID: String): Task<DataSnapshot> {
+        val src = TaskCompletionSource<DataSnapshot>()
+        val listener = attachValueListenerToTaskCompletion(src)
+        refToPath("messages/$chatID/$messageID").addListenerForSingleValueEvent(listener)
         return src.task
     }
 

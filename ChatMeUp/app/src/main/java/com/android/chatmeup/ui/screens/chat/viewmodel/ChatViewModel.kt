@@ -22,6 +22,8 @@ import com.android.chatmeup.data.db.firebase_db.remote.FirebaseReferenceChildObs
 import com.android.chatmeup.data.db.firebase_db.remote.FirebaseReferenceValueObserver
 import com.android.chatmeup.data.db.firebase_db.repository.DatabaseRepository
 import com.android.chatmeup.data.db.firebase_db.repository.StorageRepository
+import com.android.chatmeup.data.db.room_db.ChatMeUpDatabase
+import com.android.chatmeup.data.db.room_db.data.MessageStatus
 import com.android.chatmeup.ui.DefaultViewModel
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
@@ -29,16 +31,31 @@ import com.android.chatmeup.ui.cmutoast.CmuToastStyle
 import com.android.chatmeup.ui.screens.chat.data.ChatState
 import com.android.chatmeup.util.addNewItem
 import com.android.chatmeup.util.convertFileToByteArray
+import com.android.chatmeup.util.convertFileToLowQualityThumbnail
+import com.google.firebase.ktx.Firebase
+import com.google.firebase.messaging.RemoteMessage
+import com.google.firebase.messaging.ktx.messaging
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.launch
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class ChatViewModel @AssistedInject constructor(
-    @Assisted("chatId") private val chatId: String,
-    @Assisted("myUserId") private val myUserId: String,
+    @Assisted("chatId") private val chatID: String,
+    @Assisted("myUserId") private val myUserID: String,
     @Assisted("otherUserId") private val otherUserId: String,
-    private val cmuDataStoreRepository: CmuDataStoreRepository
+    private val cmuDataStoreRepository: CmuDataStoreRepository,
+    private val chatMeUpDatabase: ChatMeUpDatabase,
 ) : DefaultViewModel() {
     private val tag = Companion::class.java.simpleName
     private val dbRepository: DatabaseRepository = DatabaseRepository()
@@ -49,20 +66,27 @@ class ChatViewModel @AssistedInject constructor(
     private val _addedMessage = MutableLiveData<Message>()
     private val _updatedMessageInfo = MutableLiveData<Message>()
 
+    private val _downloadProgress = MutableStateFlow(0.0)
+
     private val fbRefMessagesChildObserver = FirebaseReferenceChildObserver()
     private val fbRefUserInfoObserver = FirebaseReferenceValueObserver()
     private val fbRefChatInfoObserver = FirebaseReferenceValueObserver()
 
     val messagesList = MediatorLiveData<MutableList<Message>>()
+    var messagesList1 = emptyFlow<List<com.android.chatmeup.data.db.room_db.entity.Message>>()
     val newMessageText = MutableLiveData("")
     val otherUser: LiveData<UserInfo> = _otherUser
     val chatInfo: LiveData<ChatInfo> = _chatInfo
     val chatState = MutableStateFlow(ChatState.CHAT)
+    val downloadProgress = _downloadProgress.asStateFlow()
 
     val lazyListState = MutableStateFlow(LazyListState())
 
+    private val ioScope = CoroutineScope(Dispatchers.IO + Job())
+
     init {
         setupChat()
+        loadChatFromDb()
         checkAndUpdateLastMessageSeen()
     }
 
@@ -74,13 +98,13 @@ class ChatViewModel @AssistedInject constructor(
     }
 
     private fun checkAndUpdateLastMessageSeen() {
-        dbRepository.loadChat(chatId) { result: Result<Chat> ->
+        dbRepository.loadChat(chatID) { result: Result<Chat> ->
             if (result is Result.Success && result.data != null) {
                 result.data.let {
-                    if (!it.lastMessage.seen && it.lastMessage.senderID != myUserId) {
+                    if (!it.lastMessage.seen && it.lastMessage.senderID != myUserID) {
                         it.lastMessage.seen = true
                         it.info.no_of_unread_messages = 0
-                        dbRepository.updateChatLastMessage(chatId, it)
+                        dbRepository.updateChatLastMessage(chatID, it)
                     }
                 }
             }
@@ -89,13 +113,13 @@ class ChatViewModel @AssistedInject constructor(
 
 
     private fun checkAndUpdateUnreadMessages(message: Message) {
-        dbRepository.loadChat(chatId) { result: Result<Chat> ->
+        dbRepository.loadChat(chatID) { result: Result<Chat> ->
             if (result is Result.Success && result.data != null) {
                 result.data.let {
                     val chat = it.apply {
                         it.lastMessage = message
                         it.info.no_of_unread_messages++ }
-                    dbRepository.updateChatLastMessage(chatId, chat)
+                    dbRepository.updateChatLastMessage(chatID, chat)
                 }
             }
         }
@@ -108,8 +132,14 @@ class ChatViewModel @AssistedInject constructor(
                 loadAndObserveNewMessages()
             }
         }
-        dbRepository.loadAndObserveChatInfo(chatId, fbRefChatInfoObserver){
+        dbRepository.loadAndObserveChatInfo(chatID, fbRefChatInfoObserver){
             onResult(_chatInfo, it)
+        }
+    }
+
+    private fun loadChatFromDb(){
+        ioScope.launch {
+            messagesList1 = chatMeUpDatabase.messageDao.getMessagesOrderedByTime(chatID = chatID)
         }
     }
 
@@ -117,15 +147,15 @@ class ChatViewModel @AssistedInject constructor(
         messagesList.addSource(_addedMessage) { messagesList.addNewItem(it) }
 
         dbRepository.loadAndObserveMessagesAdded(
-            chatId,
+            chatID,
             fbRefMessagesChildObserver
         ) { result: Result<Message> ->
-            dbRepository.updateUnreadMessages(chatId, 0)
+            dbRepository.updateUnreadMessages(chatID, 0)
             if(result is Result.Success){
                 onResult(_addedMessage, result)
                 result.data?.let{
                     if (it.senderID == otherUserId && !it.seen) {
-                        dbRepository.updateSeenMessage(chatId, it.messageID, true)
+                        dbRepository.updateSeenMessage(chatID, it.messageID, true)
                     }
                 }
             }
@@ -137,43 +167,131 @@ class ChatViewModel @AssistedInject constructor(
         activity: Activity?,
         newPhotoURI: Uri?
     ) {
+        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmssSSS", Locale.getDefault()).format(Date())
+        val messageID = chatID+timeStamp
+        val lowQualityThumbnail = convertFileToLowQualityThumbnail(context, newPhotoURI)
+        val byteArray = convertFileToByteArray(context, newPhotoURI)
+        //update database
+        ioScope.launch{
+            val message = com.android.chatmeup.data.db.room_db.entity.Message(
+                messageId = messageID,
+                messageText = newMessageText.value!!,
+                messageTime = Date().time,
+                senderID = myUserID,
+                chatID = chatID,
+                messageStatus = MessageStatus.UNSENT,
+                lowQualityThumbnail = lowQualityThumbnail,
+                fileName = if(newPhotoURI != null) chatID+timeStamp else null
+            )
+            chatMeUpDatabase.messageDao.upsertMessage(message)
+
+            val mutableMessageMap = mutableMapOf(
+                "notificationType" to "MESSAGE",
+                "messageText" to newMessageText.value!!,
+                "messageTime" to Date().time.toString(),
+                "senderID" to myUserID,
+                "chatID" to chatID,
+            )
+            if(lowQualityThumbnail != null) {
+                mutableMessageMap["lowQualityThumbnail"] = String(lowQualityThumbnail)
+            }
+            //send notification to device
+            Firebase.messaging.send(
+                RemoteMessage.Builder("$otherUserId@fcm.googleapis.com")
+                    .setData(mutableMessageMap)
+                    .setMessageId(messageID)
+                    .build()
+            )
+        }
+
+        //update storage
+        byteArray?.let{imageBytes ->
+            context.openFileOutput("$messageID.png", Context.MODE_PRIVATE).use {
+                it.write(imageBytes)
+            }
+        }
+
         if(newPhotoURI == null){
             if (!newMessageText.value.isNullOrBlank()) {
-                val newMsg = Message(senderID = myUserId, text = newMessageText.value!!)
-                dbRepository.updateNewMessage(chatId, newMsg)
+                val newMsg = Message(
+                    messageID = messageID,
+                    senderID = myUserID,
+                    text = newMessageText.value!!,
+                    messageType = "TEXT"
+                )
+                dbRepository.updateNewMessage(chatID, newMsg)
                 checkAndUpdateUnreadMessages(newMsg)
                 newMessageText.value = ""
             }
         }
         else{
             val msg = Message(
-                senderID = myUserId,
+                messageID = messageID,
+                senderID = myUserID,
                 text = newMessageText.value!!,
             )
             newMessageText.value = ""
-            storageRepository.uploadChatImage(
-                chatID = chatId,
-                byteArray = convertFileToByteArray(context, newPhotoURI)
-            ){result ->
-                if(result is Result.Success){
-                    val newMsg = msg.apply {
-                        imageUrl = result.data.toString()
+            byteArray?.let {
+                storageRepository.uploadChatImage(
+                    chatID = chatID,
+                    byteArray = it
+                ){result ->
+                    if(result is Result.Success){
+                        val newMsg = msg.apply {
+                            imageUrl = result.data.toString()
+                        }
+                        dbRepository.updateNewMessage(chatID, newMsg)
+                        checkAndUpdateUnreadMessages(newMsg)
+                        newMessageText.value = ""
+                    } else if(result is Result.Error){
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            CmuToast.createFancyToast(
+                                context,
+                                activity,
+                                "Upload Failed",
+                                "Unable to upload Image",
+                                CmuToastStyle.ERROR,
+                                CmuToastDuration.SHORT
+                            )
+                        }, 200)
                     }
-                    dbRepository.updateNewMessage(chatId, newMsg)
-                    checkAndUpdateUnreadMessages(newMsg)
-                    newMessageText.value = ""
                 }
-                else if(result is Result.Error){
+            }
+        }
+    }
+
+    private fun loadImage(
+        context: Context,
+        activity: Activity?,
+        messageID: String
+    ){
+        val file = File(context.filesDir, "$messageID.png")
+        storageRepository.downloadChatImage(chatID, file){result ->
+            when(result){
+                is Result.Error -> {
                     Handler(Looper.getMainLooper()).postDelayed({
                         CmuToast.createFancyToast(
                             context,
                             activity,
-                            "Upload Failed",
-                            "Unable to upload Image",
+                            "Download Failed",
+                            "Unable to download Image",
                             CmuToastStyle.ERROR,
                             CmuToastDuration.SHORT
                         )
                     }, 200)
+                }
+                Result.Loading -> {
+                    // do nothing for now at least
+                }
+                is Result.Progress -> {
+                    _downloadProgress.value = result.double
+                }
+                is Result.Success -> {
+                    //update database
+                    ioScope.launch {
+                        val message = chatMeUpDatabase.messageDao.getMessage(messageID)
+                        chatMeUpDatabase.messageDao.upsertMessage(message.apply { fileName = "$messageID.png" })
+                    }
                 }
             }
         }

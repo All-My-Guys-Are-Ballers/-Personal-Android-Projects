@@ -12,9 +12,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-const val MAX_FILE_SIZE = 150000
+const val MAX_FILE_SIZE = 150000 // in bytes
+const val LOW_QUALITY_THUMBNAIL_SIZE = 1000 //in bytes
 
-fun convertFileToByteArray(context: Context, uri: Uri): ByteArray {
+fun convertFileToByteArray(context: Context, uri: Uri?): ByteArray? {
+    if(uri == null) return null
+
     val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
     val bitmap = BitmapFactory.decodeStream(inputStream)
     val byteArrayOutputStream = ByteArrayOutputStream()
@@ -23,6 +26,22 @@ fun convertFileToByteArray(context: Context, uri: Uri): ByteArray {
     while (byteArrayOutputStream.toByteArray().size > MAX_FILE_SIZE && quality > 0) {
         byteArrayOutputStream.reset()
         quality -= 5
+        bitmap.compress(Bitmap.CompressFormat.JPEG, quality, byteArrayOutputStream)
+    }
+
+    return byteArrayOutputStream.toByteArray()
+}
+
+fun convertFileToLowQualityThumbnail(context: Context, uri: Uri?): ByteArray? {
+    if(uri == null) return null
+    val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
+    val bitmap = BitmapFactory.decodeStream(inputStream)
+    val byteArrayOutputStream = ByteArrayOutputStream()
+    bitmap.compress(Bitmap.CompressFormat.JPEG, 50, byteArrayOutputStream)
+    var quality = 100
+    while (byteArrayOutputStream.toByteArray().size > LOW_QUALITY_THUMBNAIL_SIZE && quality > 0) {
+        byteArrayOutputStream.reset()
+        quality /= 2
         bitmap.compress(Bitmap.CompressFormat.JPEG, quality, byteArrayOutputStream)
     }
 

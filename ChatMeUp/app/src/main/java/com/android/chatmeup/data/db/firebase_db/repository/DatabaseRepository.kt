@@ -32,8 +32,8 @@ class DatabaseRepository {
         firebaseDatabaseService.updateFCMToken(userID, token)
     }
 
-    fun updateNewMessage(messagesID: String, message: Message) {
-        firebaseDatabaseService.pushNewMessage(messagesID, message)
+    fun updateNewMessage(chatID: String, message: Message) {
+        firebaseDatabaseService.pushNewMessage(chatID, message)
     }
 
     fun updateNewUser(user: User) {
@@ -116,6 +116,13 @@ class DatabaseRepository {
             b.invoke(Result.Success(wrapSnapshotToClass(Chat::class.java, it)))
         }.addOnFailureListener { b.invoke(Result.Error(it.message)) }
     }
+
+    fun loadMessage(chatID: String, messageID: String, b: ((Result<Message>) -> Unit)){
+        firebaseDatabaseService.loadMessageTask(chatID, messageID).addOnSuccessListener{
+            b.invoke(Result.Success(wrapSnapshotToClass(Message::class.java, it)))
+        }.addOnFailureListener { b.invoke(Result.Error(it.message)) }
+    }
+
 
     fun loadChatInfo(chatID: String, b:((Result<ChatInfo>) -> Unit)){
         firebaseDatabaseService.loadChatInfoTask(chatID).addOnSuccessListener {

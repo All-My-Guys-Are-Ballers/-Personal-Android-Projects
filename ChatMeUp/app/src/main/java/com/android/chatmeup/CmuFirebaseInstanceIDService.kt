@@ -39,18 +39,23 @@ class CmuFirebaseInstanceIDService: FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
-
+        Timber.tag(tag).d("message Received ${message.data}")
         //save to database
         //show notification if app is paused or closed
-        Timber.tag(tag).d("message Received ${message.data}")
-        if(message.notification != null){
-            generateNotification()
-        }
+//        if(message.notification != null){
+//            generateNotification()
+//        }
     }
 
     override fun onMessageSent(msgId: String) {
         super.onMessageSent(msgId)
+        Timber.tag(tag).d("message Sent $msgId")
         //update msg sent
+    }
+
+    override fun onSendError(msgId: String, exception: Exception) {
+        super.onSendError(msgId, exception)
+        Timber.tag(tag).d("message not Sent $msgId $exception")
     }
 
     private fun generateNotification() {
@@ -92,4 +97,44 @@ class CmuFirebaseInstanceIDService: FirebaseMessagingService() {
         }
         notificationManager.notify(0, builder)
     }
+
+//    fun sendPushNotification(token: String, title: String, subtitle: String, body: String, data: Map<String, String> = emptyMap()) {
+//        val url = "https://fcm.googleapis.com/fcm/send"
+//        val key = ""
+//
+//        val bodyJson = JSONObject()
+//        bodyJson.put("to", token)
+//        bodyJson.put("notification",
+//            JSONObject().also {
+//                it.put("title", title)
+//                it.put("subtitle", subtitle)
+//                it.put("body", body)
+//                it.put("sound", "social_notification_sound.wav")
+//            }
+//        )
+//        bodyJson.put("data", JSONObject(data))
+//
+//        val request = Request.Builder()
+//            .url(url)
+//            .addHeader("Content-Type", "application/json")
+//            .addHeader("Authorization", "key=$key")
+//            .post(
+//                bodyJson.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+//            )
+//            .build()
+//
+//        val client = OkHttpClient()
+//
+//        client.newCall(request).enqueue(
+//            object : Callback {
+//                override fun onResponse(call: Call, response: Response) {
+//                    println("Received data: ${response.body?.string()}")
+//                }
+//
+//                override fun onFailure(call: Call, e: IOException) {
+//                    println(e.message.toString())
+//                }
+//            }
+//        )
+//    }
 }
