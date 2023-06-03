@@ -111,10 +111,6 @@ class LoginScreenViewModel @Inject constructor(
                     )
                 }, 200)
                 Timber.tag(tag).d("Login Error ${event.errorMsg}")
-
-//                onEventTriggered(
-//                    LoginEvents.InitLoginEvent
-//                )
             }
 
             is LoginEvents.DoneEvent -> {
@@ -164,7 +160,7 @@ class LoginScreenViewModel @Inject constructor(
                                         messageTime = message.epochTimeMs,
                                         senderID = message.senderID,
                                         messageStatus = MessageStatus.UNSENT,
-                                        lowQualityThumbnail = message.lowQualityThumbnail,
+                                        lowQualityThumbnail = message.lowQualityThumbnail.toByteArray(),
                                     )
                                 )
                             }

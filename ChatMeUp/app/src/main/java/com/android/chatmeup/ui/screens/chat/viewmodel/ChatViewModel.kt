@@ -171,12 +171,13 @@ class ChatViewModel @AssistedInject constructor(
         val messageID = chatID+timeStamp
         val lowQualityThumbnail = convertFileToLowQualityThumbnail(context, newPhotoURI)
         val byteArray = convertFileToByteArray(context, newPhotoURI)
+        val messageTime = Date().time
         //update database
         ioScope.launch{
             val message = com.android.chatmeup.data.db.room_db.entity.Message(
                 messageId = messageID,
                 messageText = newMessageText.value!!,
-                messageTime = Date().time,
+                messageTime = messageTime,
                 senderID = myUserID,
                 chatID = chatID,
                 messageStatus = MessageStatus.UNSENT,
@@ -185,22 +186,20 @@ class ChatViewModel @AssistedInject constructor(
             )
             chatMeUpDatabase.messageDao.upsertMessage(message)
 
-            val mutableMessageMap = mutableMapOf(
-                "notificationType" to "MESSAGE",
-                "messageText" to newMessageText.value!!,
-                "messageTime" to Date().time.toString(),
-                "senderID" to myUserID,
-                "chatID" to chatID,
-            )
+            val remoteMessage = RemoteMessage.Builder(otherUserId+"@fcm.googleapais.com")
+                .setMessageId(messageID)
+                .addData("messageText" , newMessageText.value!!)
+                .addData("messageTime", messageTime.toString())
+                .addData("notificationType","MESSAGE")
+                .addData("senderID", myUserID)
+                .addData("chatID", chatID)
+
             if(lowQualityThumbnail != null) {
-                mutableMessageMap["lowQualityThumbnail"] = String(lowQualityThumbnail)
+                remoteMessage.addData("lowQualityThumbnail", String(lowQualityThumbnail))
             }
             //send notification to device
             Firebase.messaging.send(
-                RemoteMessage.Builder("$otherUserId@fcm.googleapis.com")
-                    .setData(mutableMessageMap)
-                    .setMessageId(messageID)
-                    .build()
+                remoteMessage.build()
             )
         }
 
@@ -211,13 +210,15 @@ class ChatViewModel @AssistedInject constructor(
             }
         }
 
-        if(newPhotoURI == null){
+        if(lowQualityThumbnail == null){
             if (!newMessageText.value.isNullOrBlank()) {
                 val newMsg = Message(
                     messageID = messageID,
                     senderID = myUserID,
+                    receiverID =  otherUserId,
                     text = newMessageText.value!!,
-                    messageType = "TEXT"
+                    messageType = "TEXT",
+                    epochTimeMs = messageTime
                 )
                 dbRepository.updateNewMessage(chatID, newMsg)
                 checkAndUpdateUnreadMessages(newMsg)
@@ -228,7 +229,10 @@ class ChatViewModel @AssistedInject constructor(
             val msg = Message(
                 messageID = messageID,
                 senderID = myUserID,
+                receiverID =  otherUserId,
                 text = newMessageText.value!!,
+                lowQualityThumbnail = String(lowQualityThumbnail),
+                epochTimeMs = messageTime
             )
             newMessageText.value = ""
             byteArray?.let {
