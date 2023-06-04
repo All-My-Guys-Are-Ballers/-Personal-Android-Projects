@@ -63,10 +63,10 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     context: Context,
     activity: Activity?,
-//    onBackPressedDispatcher: OnBackPressedDispatcher,
     factory: HomeViewModel.Factory,
     onNavigateToChat: (String) -> Unit,
     onNavigateToLogin: () -> Unit,
+    onNavigateToEditProfile: () -> Unit,
     onNavigateToSettings: () -> Unit,
 ){
     val systemUiController = rememberSystemUiController()
@@ -277,10 +277,9 @@ fun HomeScreen(
                         onSignOutClicked = {
                             viewModel.logout()
                             onNavigateToLogin()
-                        }
-                    ) {
-
-                    }
+                        },
+                        onNavigateToEditProfile = onNavigateToEditProfile
+                    )
                 }
             }
 

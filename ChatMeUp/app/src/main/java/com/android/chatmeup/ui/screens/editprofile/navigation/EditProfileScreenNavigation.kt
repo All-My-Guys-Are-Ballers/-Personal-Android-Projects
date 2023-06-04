@@ -1,26 +1,27 @@
-package com.android.chatmeup.ui.screens.registeruserscreen
+package com.chatmeup.features.edit_profile.navigation
 
 import android.app.Activity
 import android.content.Context
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.android.chatmeup.navigation.CmuNavigationDestination
+import com.chatmeup.features.edit_profile.EditProfileScreen
 
-object RegisterUserDestination : CmuNavigationDestination {
-    override val route = "register_user_route"
-    override val destination = "register_user_destination"
+object EditProfileDestination : CmuNavigationDestination {
+    override val route = "edit_profile_route"
+    override val destination = "edit_profile_destination"
     override val shouldPopStack = false
 }
 
-fun NavGraphBuilder.registerUserGraph(
+fun NavGraphBuilder.editProfileGraph(
     context: Context,
     activity: Activity?,
     onBackClick: () -> Unit,
 ) {
     composable(
-        route = RegisterUserDestination.route
+        route = com.chatmeup.features.edit_profile.navigation.EditProfileDestination.route
     ) { navBackStackEntry ->
-        RegisterUserScreen(
+        EditProfileScreen(
             context = context,
             activity = activity,
             onBackClick = onBackClick

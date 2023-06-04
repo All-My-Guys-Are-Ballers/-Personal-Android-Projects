@@ -5,7 +5,6 @@ import android.content.Context
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.android.chatmeup.navigation.CmuNavigationDestination
-import com.android.chatmeup.ui.screens.registeruserscreen.RegisterUserDestination
 import com.android.chatmeup.ui.screens.settings.SettingsScreen
 
 object SettingsDestination : CmuNavigationDestination {

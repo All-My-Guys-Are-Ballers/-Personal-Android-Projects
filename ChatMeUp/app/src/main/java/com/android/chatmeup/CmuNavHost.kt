@@ -1,4 +1,4 @@
-package com.android.chatmeup.navigation
+package com.android.chatmeup
 
 import android.app.Activity
 import android.content.Context
@@ -9,7 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
-import com.android.chatmeup.MainActivity
+import com.android.chatmeup.navigation.CmuNavigationDestination
 import com.android.chatmeup.ui.screens.chat.navigation.ChatDestination
 import com.android.chatmeup.ui.screens.chat.navigation.chatGraph
 import com.android.chatmeup.ui.screens.homescreen.navigation.HomeDestination
@@ -20,6 +20,8 @@ import com.android.chatmeup.ui.screens.registeruserscreen.RegisterUserDestinatio
 import com.android.chatmeup.ui.screens.registeruserscreen.registerUserGraph
 import com.android.chatmeup.ui.screens.settings.navigation.SettingsDestination
 import com.android.chatmeup.ui.screens.settings.navigation.settingsGraph
+import com.chatmeup.features.edit_profile.navigation.EditProfileDestination
+import com.chatmeup.features.edit_profile.navigation.editProfileGraph
 import dagger.hilt.android.EntryPointAccessors
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -32,7 +34,6 @@ fun CmuNavHost(
     startDestination: String,
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit,
-//    onBackPressedDispatcher: OnBackPressedDispatcher,
 ) {
 
     NavHost(
@@ -60,7 +61,6 @@ fun CmuNavHost(
         homeGraph(
             context = context,
             activity = activity,
-//            onBackPressedDispatcher = onBackPressedDispatcher,
             factory = EntryPointAccessors.fromActivity(
                 context as Activity, MainActivity.ViewModelFactoryProvider::class.java
             ).homeViewModelFactory(),
@@ -76,8 +76,11 @@ fun CmuNavHost(
             },
             onNavigateToSettings = {backStackEntry ->
                 onNavigateToDestination(backStackEntry, SettingsDestination, LoginDestination.route)
-
             },
+            onNavigateToEditProfile = {backStackEntry ->
+                onNavigateToDestination(backStackEntry,
+                    EditProfileDestination, EditProfileDestination.route)
+            }
 
         )
 
@@ -88,6 +91,12 @@ fun CmuNavHost(
                 context as Activity, MainActivity.ViewModelFactoryProvider::class.java
             ).chatViewModelFactory(),
             onBackClicked = onBackClick
+        )
+
+        editProfileGraph(
+            context = context,
+            activity = activity,
+            onBackClick = onBackClick
         )
 
         settingsGraph(

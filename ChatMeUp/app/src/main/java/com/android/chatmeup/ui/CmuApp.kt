@@ -6,7 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.rememberNavController
 import com.android.chatmeup.CmuApplication
-import com.android.chatmeup.navigation.CmuNavHost
+import com.android.chatmeup.CmuNavHost
 import com.android.chatmeup.ui.screens.homescreen.navigation.HomeDestination
 import com.android.chatmeup.ui.screens.loginscreen.LoginDestination
 import com.google.firebase.auth.ktx.auth
@@ -29,6 +29,6 @@ fun CmuApp(
         navController = appState.navController,
         onBackClick = appState::navigateBack,
         onNavigateToDestination = appState::navigate,
-        startDestination = if(Firebase.auth.currentUser == null)LoginDestination.route else HomeDestination.route
+        startDestination = if(Firebase.auth.currentUser == null) LoginDestination.route else HomeDestination.route
     )
 }

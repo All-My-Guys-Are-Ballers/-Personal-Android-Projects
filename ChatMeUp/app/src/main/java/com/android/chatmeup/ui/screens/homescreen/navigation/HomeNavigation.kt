@@ -24,7 +24,8 @@ fun NavGraphBuilder.homeGraph(
     factory: HomeViewModel.Factory,
     onNavigateToChat: (NavBackStackEntry, String) -> Unit,
     onNavigateToLogin: (NavBackStackEntry) -> Unit,
-    onNavigateToSettings: (NavBackStackEntry) -> Unit
+    onNavigateToSettings: (NavBackStackEntry) -> Unit,
+    onNavigateToEditProfile: (NavBackStackEntry) -> Unit
 ) {
     composable(
         route = HomeDestination.route
@@ -38,6 +39,9 @@ fun NavGraphBuilder.homeGraph(
             },
             onNavigateToLogin = {
                 onNavigateToLogin(navBackStackEntry)
+            },
+            onNavigateToEditProfile = {
+                onNavigateToEditProfile(navBackStackEntry)
             }
         ) {
             onNavigateToSettings(navBackStackEntry)
