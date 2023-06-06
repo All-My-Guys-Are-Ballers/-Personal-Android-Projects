@@ -1,4 +1,4 @@
-package com.chatmeup.features.edit_profile
+package com.android.chatmeup.ui.screens.editprofile
 
 import android.app.Activity
 import android.content.Context
@@ -12,15 +12,15 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.MaterialTheme
 import androidx.compose.material.ModalBottomSheetState
 import androidx.compose.material.ModalBottomSheetValue
-import androidx.compose.material.TextButton
 import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,12 +32,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.android.chatmeup.ui.screens.components.CmuInputTextField
 import com.android.chatmeup.ui.screens.components.ImagePage
 import com.android.chatmeup.ui.theme.seed
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+
+const val MAX_DISPLAY_NAME_LENGTH = 25
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
@@ -52,6 +55,10 @@ fun EditProfileScreen(
 
     var displayName = ""
 
+    var displayNameTextLengthRemaining by remember {
+        mutableStateOf(MAX_DISPLAY_NAME_LENGTH - displayName.length)
+    }
+
     var currentBottomSheet: BottomSheetScreen by rememberSaveable{
         mutableStateOf(BottomSheetScreen.ProfileImagePage(profileImageUri))
     }
@@ -61,7 +68,7 @@ fun EditProfileScreen(
             skipHalfExpanded = true
         )
 
-    BottomSheetScaffold(sheetContent =
+    BottomSheetScaffold(sheetContent = {
         SheetLayout(
             scope = scope,
             currentScreen = currentBottomSheet,
@@ -74,8 +81,9 @@ fun EditProfileScreen(
                 displayName = it
             },
             onDismissButtonClicked = { /*TODO*/ },
-            onConfirm = ,
-        )
+            onConfirm = {},
+            displayNameTextLengthRemaining = displayNameTextLengthRemaining
+        ) }
     ) {
 
     }
@@ -86,10 +94,9 @@ fun EditProfileScreen(
 fun EditDisplayNameDialog(
     onDismissButtonClicked: () -> Unit,
     onConfirm: (String) -> Unit,
-    context: Context,
-    activity: Activity?,
     displayName: String,
-    onValueChanged: (String) -> Unit
+    onValueChanged: (String) -> Unit,
+    textLengthRemaining: Int
 ){
     val keyboardController = LocalSoftwareKeyboardController.current
     keyboardController?.show()
@@ -103,7 +110,14 @@ fun EditDisplayNameDialog(
         CmuInputTextField(
             placeholder = "Display Name",
             text = displayName,
-            onValueChanged =
+            onValueChanged = onValueChanged,
+            trailingIcon = {
+                Text(
+                    text = textLengthRemaining.toString(),
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
         )
 
 
@@ -113,7 +127,7 @@ fun EditDisplayNameDialog(
                 .padding(bottom = 8.dp, end = 6.dp)
         ) {
             val textStyle =
-                MaterialTheme.typography.button
+                MaterialTheme.typography.labelLarge
             ProvideTextStyle(value = textStyle) {
                 Row(
                 ) {
@@ -123,18 +137,18 @@ fun EditDisplayNameDialog(
                         Text(
                             "Cancel",
                             color = seed,
-                            style = MaterialTheme.typography.button
+                            style = MaterialTheme.typography.labelLarge
                         )
                     }
                     TextButton(
                         onClick = {
-
+                            onConfirm(displayName)
                         },
                     ) {
                         Text(
                             "Save",
                             color = seed,
-                            style = MaterialTheme.typography.button
+                            style = MaterialTheme.typography.labelLarge
                         )
                     }
                 }
@@ -152,6 +166,7 @@ fun SheetLayout(
     context: Context,
     activity: Activity?,
     displayName: String,
+    displayNameTextLengthRemaining: Int,
     onValueChanged: (String) -> Unit,
     onDismissButtonClicked: () -> Unit,
     onConfirm: (String) -> Unit
@@ -159,12 +174,11 @@ fun SheetLayout(
     when(currentScreen){
         BottomSheetScreen.EditDisplayName -> {
             EditDisplayNameDialog(
-                context = context,
-                activity = activity,
                 onDismissButtonClicked = onDismissButtonClicked ,
                 onConfirm = onConfirm,
                 displayName = displayName,
-                onValueChanged = onValueChanged
+                onValueChanged = onValueChanged,
+                textLengthRemaining = displayNameTextLengthRemaining
             )
         }
         is BottomSheetScreen.ProfileImagePage -> {

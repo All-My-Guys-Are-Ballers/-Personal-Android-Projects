@@ -5,7 +5,7 @@ import android.content.Context
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.android.chatmeup.navigation.CmuNavigationDestination
-import com.chatmeup.features.edit_profile.EditProfileScreen
+import com.android.chatmeup.ui.screens.editprofile.EditProfileScreen
 
 object EditProfileDestination : CmuNavigationDestination {
     override val route = "edit_profile_route"
