@@ -161,8 +161,8 @@ class FirebaseDataSource {
         refToPath("users/$userID/info/profileImageUrl").setValue(url)
     }
 
-    fun updateUserStatus(userID: String, status: String) {
-        refToPath("users/$userID/info/status").setValue(status)
+    fun updateUserStatus(userID: String, status: String): Task<Void> {
+        return refToPath("users/$userID/info/status").setValue(status)
     }
 
     fun updateOnlineStatus(userID: String, status: Boolean){
@@ -171,6 +171,10 @@ class FirebaseDataSource {
 
     fun updateFCMToken(userID: String, token: String){
         refToPath("users/$userID/info/fcmToken").setValue(token)
+    }
+
+    fun updateDisplayName(userID: String, displayName: String): Task<Void>{
+        return refToPath("users/$userID/info/displayName").setValue(displayName)
     }
 
     fun updateLastMessage(chatID: String, chat: Chat) {

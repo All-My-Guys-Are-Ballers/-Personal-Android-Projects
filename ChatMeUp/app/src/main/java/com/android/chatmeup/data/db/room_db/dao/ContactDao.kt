@@ -15,6 +15,9 @@ interface ContactDao {
     @Query("SELECT * FROM contact")
     fun getContacts(): Flow<List<Contact>>
 
+    @Query("SELECT * FROM contact WHERE :userID == userID")
+    fun getContact(userID: String): Flow<Contact>
+
     @Delete
     fun deleteContact(contact: Contact)
 }

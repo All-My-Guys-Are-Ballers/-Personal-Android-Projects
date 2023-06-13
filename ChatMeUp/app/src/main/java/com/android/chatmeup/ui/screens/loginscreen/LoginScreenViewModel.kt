@@ -13,6 +13,7 @@ import com.android.chatmeup.data.Result
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
 import com.android.chatmeup.data.db.firebase_db.repository.AuthRepository
 import com.android.chatmeup.data.db.firebase_db.repository.DatabaseRepository
+import com.android.chatmeup.data.db.firebase_db.repository.StorageRepository
 import com.android.chatmeup.data.db.room_db.ChatMeUpDatabase
 import com.android.chatmeup.data.db.room_db.data.MessageStatus
 import com.android.chatmeup.data.db.room_db.entity.Chat
@@ -25,7 +26,10 @@ import com.android.chatmeup.ui.cmutoast.CmuToastStyle
 import com.android.chatmeup.util.convertTwoUserIDs
 import com.fredrikbogg.android_chat_app.data.model.Login
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import com.google.firebase.messaging.FirebaseMessaging
+import com.google.firebase.messaging.ktx.messaging
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -59,17 +63,26 @@ class LoginScreenViewModel @Inject constructor(
 
     private val dbRepository = DatabaseRepository()
 
+    private val storageRepository = StorageRepository()
+
     private val loginCredentials = MutableStateFlow("")
 
     private val _loadingMsg = MutableStateFlow("Loading...")
     val loadingMsg = _loadingMsg.asStateFlow()
 
     private var myUserID: String? = null
+    private var token: String = ""
 
     private val ioScope = CoroutineScope(Dispatchers.IO + Job())
 
+    init {
+        Firebase.messaging.token.addOnCompleteListener {
+            token = it.result
+        }
+    }
+
     fun onEventTriggered(
-        event: LoginScreenViewModel.LoginEvents,
+        event: LoginEvents,
     ) {
         when (event) {
             LoginEvents.InitLoginEvent -> {
@@ -82,20 +95,20 @@ class LoginScreenViewModel @Inject constructor(
                     email = event.email,
                     password = event.password,
                     context = event.context,
-                    activity = event.activity,
-                    onDataLoaded = {
-                        onEventTriggered(
-                            event = LoginEvents.LoadAllData(
-                                event.context,
-                                event.activity,
-                                event.onDataLoaded
-                            ),
-                        )
-                        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-                            myUserID?.let { dbRepository.updateFCMToken(it, task.result) }
-                        }
+                    token = token,
+                    activity = event.activity
+                ) {
+                    onEventTriggered(
+                        event = LoginEvents.LoadAllData(
+                            event.context,
+                            event.activity,
+                            event.onDataLoaded
+                        ),
+                    )
+                    FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                        myUserID?.let { dbRepository.updateFCMToken(it, task.result) }
                     }
-                )
+                }
             }
 
             is LoginEvents.ErrorEvent -> {
@@ -233,14 +246,76 @@ class LoginScreenViewModel @Inject constructor(
         activity: Activity?,
         onDataLoaded: () -> Unit
     ){
+        Firebase.auth.currentUser?.uid?.let {
+            dbRepository.loadUserInfo(it){result ->
+                when(result){
+                    is Result.Error -> {
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            CmuToast.createFancyToast(
+                                context,
+                                activity,
+                                "Download Failed",
+                                "Unable to load User Info",
+                                CmuToastStyle.ERROR,
+                                CmuToastDuration.SHORT
+                            )
+                        }, 200)
+                    }
+                    Result.Loading -> {}
+                    is Result.Progress -> {}
+                    is Result.Success -> {
+                        result.data?.let { it1 ->
+                            loadProfileImage(
+                                context,
+                                activity,
+                                it1.id,
+                                it1.displayName,
+                                it1.aboutStr,
+                                isMine = true,
+                                email = it1.email
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         myUserID?.let {
             dbRepository.loadFriends(it){result ->
                 when(result){
                     is Result.Success -> {
                         result.data?.let {contactList ->
                             contactList.forEach { contact ->
-                                ioScope.launch{
-                                    chatMeUpDatabase.contactDao.upsertContact(Contact(contact.userID))
+                                dbRepository.loadUserInfo(contact.userID){infoResult ->
+                                    when(infoResult){
+                                        is Result.Error -> {
+                                            Handler(Looper.getMainLooper()).postDelayed({
+                                                CmuToast.createFancyToast(
+                                                    context,
+                                                    activity,
+                                                    "Download Failed",
+                                                    "Unable to load User Info",
+                                                    CmuToastStyle.ERROR,
+                                                    CmuToastDuration.SHORT
+                                                )
+                                            }, 200)
+                                        }
+                                        Result.Loading -> {}
+                                        is Result.Progress -> {}
+                                        is Result.Success -> {
+                                            infoResult.data?.let{info ->
+                                                loadProfileImage(
+                                                    context,
+                                                    activity,
+                                                    contact.userID,
+                                                    displayName = info.displayName,
+                                                    status = info.aboutStr,
+                                                    false,
+                                                    email = info.email,
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                                 loadChat(otherUserID = contact.userID)
                             }
@@ -268,6 +343,63 @@ class LoginScreenViewModel @Inject constructor(
         }
     }
 
+    private fun loadProfileImage(
+        context: Context,
+        activity: Activity?,
+        userID: String,
+        displayName: String,
+        status: String,
+        isMine: Boolean,
+        email: String,
+    ){
+        val localPath = "profile_photos/${if(isMine) "my_profile" else userID}.png"
+        storageRepository.downloadProfileImage(userID, context, localPath) { result ->
+            when (result) {
+                is Result.Error -> {
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        CmuToast.createFancyToast(
+                            context,
+                            activity,
+                            "Download Failed",
+                            "Unable to download Profile Image",
+                            CmuToastStyle.ERROR,
+                            CmuToastDuration.SHORT
+                        )
+                    }, 200)
+                    Timber.tag(tag).d("Unable to download profile image for $displayName")
+                }
+
+                Result.Loading -> {
+                    // do nothing for now at least
+                    Timber.tag(tag).d("Saving contact loading for $displayName")
+                }
+
+                is Result.Progress -> {
+//                    _downloadProgress.value = result.double
+                    Timber.tag(tag).d("Saving profile Image Progress ${result.double} for $displayName")
+                }
+
+                is Result.Success -> {
+                    Timber.tag(tag).d("Saving profile Success ${result.msg} for $displayName")
+                    //update database
+                    ioScope.launch{
+                        val contact = Contact(
+                            userID,
+                            displayName,
+                            email,
+                            status,
+                            localPath,
+                            "user_photos/$userID/profile_image"
+                        )
+                        chatMeUpDatabase.contactDao.upsertContact(contact)
+                        Timber.tag(tag).d("Contact Saved for $displayName")
+                    }
+                }
+            }
+        }
+    }
+
+
     @WorkerThread
     private fun saveLoginCredentials(value: String) = viewModelScope.launch(Dispatchers.IO) {
         cmuDataStoreRepository.saveLoginCredentials(value)
@@ -286,6 +418,7 @@ class LoginScreenViewModel @Inject constructor(
     private fun login(
         email: String,
         password: String,
+        token: String,
         activity: Activity?,
         context: Context,
         onDataLoaded: () -> Unit
@@ -298,6 +431,7 @@ class LoginScreenViewModel @Inject constructor(
 //                saveUserId(result.data?.uid)
                 result.data?.let{
                     myUserID = it.uid
+                    dbRepository.updateFCMToken(it.uid, token)
                     onEventTriggered(
                         event = LoginEvents.LoadAllData(
                             context = context,

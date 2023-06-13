@@ -6,5 +6,10 @@ import androidx.room.PrimaryKey
 @Entity
 data class Contact(
     @PrimaryKey
-    val userID: String
+    val userID: String,
+    var displayName: String,
+    var email: String,
+    var aboutStr: String,
+    var localProfilePhotoPath: String,
+    var firebaseProfilePhotoPath: String
 )

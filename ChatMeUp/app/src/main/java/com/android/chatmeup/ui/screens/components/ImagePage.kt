@@ -1,6 +1,5 @@
 package com.android.chatmeup.ui.screens.components
 
-import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,7 +15,7 @@ import coil.compose.rememberAsyncImagePainter
 @Composable
 fun ImagePage(
     title: String,
-    imageUri: Uri,
+    imageObj: Any,
     onBackClick: () -> Unit,
 ){
 
@@ -25,17 +24,20 @@ fun ImagePage(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             CmuTopBar(
-                title = title,
-                shouldShowBackIcon = true,
-                onBackClick = onBackClick
+                Modifier,
+                title,
+                Color.White,
+                true,
+                onBackClick,
             ) }
     ) {
        Box(modifier = Modifier.padding(it)){
            Image(
-               painter = rememberAsyncImagePainter(imageUri),
+               painter = rememberAsyncImagePainter(imageObj),
                contentDescription = "Profile Picture",
                modifier = Modifier
-                   .fillMaxSize().align(Alignment.Center),
+                   .fillMaxSize()
+                   .align(Alignment.Center),
                contentScale = ContentScale.Fit
            )
        }

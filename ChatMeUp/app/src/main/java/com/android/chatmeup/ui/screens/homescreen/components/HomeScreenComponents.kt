@@ -464,7 +464,7 @@ fun SheetLayout(
         BottomSheetScreen.ProfileImage -> {
             ImagePage(
                 title = selectedImageTitle,
-                imageUri = selectedImageUri
+                imageObj = selectedImageUri
             ) {
                 onCloseImage()
             }

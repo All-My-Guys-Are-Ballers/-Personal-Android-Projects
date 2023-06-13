@@ -55,7 +55,9 @@ import com.android.chatmeup.ui.theme.cmuBlue
 import com.android.chatmeup.util.isEmailValid
 import com.android.chatmeup.util.isStrongPassword
 import com.google.accompanist.insets.navigationBarsWithImePadding
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun LoginScreen(
     context: Context,

@@ -50,14 +50,13 @@ fun CmuInputTextField(
     trailingIcon: @Composable (() -> Unit)? = null,
     onDone: () -> Unit = {},
     visualTransformation: VisualTransformation = VisualTransformation.None,
-    shape: Shape = RoundedCornerShape(10),
-//    textFieldHeight: Dp = 45.dp
+    shape: Shape = RoundedCornerShape(15.dp),
 ){
     val keyboardState = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
 
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .padding(paddingValues),
     ) {
@@ -72,16 +71,14 @@ fun CmuInputTextField(
         }
 
         CmuOutlinedTextField(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
-//                .height(textFieldHeight)
             ,
             value = text,
             onValueChange = {
                 onValueChanged(it)
             },
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
-//            textStyle = MaterialTheme.typography.bodyLarge,
             placeholder = {
                 Text(
                     text = placeholder,

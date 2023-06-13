@@ -16,14 +16,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
-@Preview
 @Composable
 fun CmuTopBar(
     modifier: Modifier = Modifier,
     title: String = "Chats",
+    color: Color = MaterialTheme.colorScheme.onBackground,
     shouldShowBackIcon: Boolean = false,
     onBackClick: () -> Unit = {},
     vararg icons: @Composable () -> Unit = emptyArray()
@@ -38,7 +37,7 @@ fun CmuTopBar(
                 Icon(
                     imageVector = Icons.Default.ArrowBackIosNew,
                     contentDescription = "Back Button",
-                    tint = Color.White
+                    tint = color
                 )
             }
             Spacer(modifier = Modifier.width(15.dp))
@@ -48,7 +47,7 @@ fun CmuTopBar(
             modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Medium,
-            color = Color.White
+            color = color
         )
         for(icon in icons){
             icon()

@@ -20,8 +20,11 @@ class DatabaseRepository {
     private val firebaseDatabaseService = FirebaseDataSource()
 
     //region Update
-    fun updateUserStatus(userID: String, status: String) {
+    fun updateUserStatus(userID: String, status: String, b:(Result<Nothing>) -> Unit) {
         firebaseDatabaseService.updateUserStatus(userID, status)
+            .addOnSuccessListener { b.invoke(Result.Success()) }
+            .addOnFailureListener{ b.invoke(Result.Error(msg = it.message))}
+            .addOnCanceledListener { b.invoke(Result.Error()) }
     }
 
     fun updateOnlineStatus(userID: String, status: Boolean){
@@ -30,6 +33,13 @@ class DatabaseRepository {
 
     fun updateFCMToken(userID: String, token: String){
         firebaseDatabaseService.updateFCMToken(userID, token)
+    }
+
+    fun updateDisplayName(userID: String, displayName: String, b:(Result<Nothing>) -> Unit){
+        firebaseDatabaseService.updateDisplayName(userID, displayName)
+            .addOnSuccessListener { b.invoke(Result.Success()) }
+            .addOnFailureListener{ b.invoke(Result.Error(msg = it.message))}
+            .addOnCanceledListener { b.invoke(Result.Error()) }
     }
 
     fun updateNewMessage(chatID: String, message: Message) {

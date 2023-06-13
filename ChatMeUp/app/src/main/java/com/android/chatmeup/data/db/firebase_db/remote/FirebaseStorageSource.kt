@@ -1,5 +1,6 @@
 package com.android.chatmeup.data.db.firebase_db.remote
 
+import android.content.Context
 import android.net.Uri
 import com.google.android.gms.tasks.Task
 import com.google.firebase.storage.FileDownloadTask
@@ -37,7 +38,16 @@ class FirebaseStorageSource {
         }
     }
 
-    fun downloadChatImage(chatID: String, file: File): FileDownloadTask {
-        return refToPath(chatID).getFile(file)
+    fun downloadChatImage(chatID: String, timeStamp: String, file: File): FileDownloadTask {
+        return refToPath("$chatID/$timeStamp").getFile(file)
+    }
+
+    fun downloadProfileImage(userID: String, context: Context, path: String): FileDownloadTask {
+        val file = File(context.filesDir, path)
+        if (!file.parentFile?.exists()!!)
+            file.parentFile?.mkdirs()
+        if (!file.exists())
+            file.createNewFile();
+        return refToPath("user_photos/$userID/profile_image").getFile(file)
     }
 }

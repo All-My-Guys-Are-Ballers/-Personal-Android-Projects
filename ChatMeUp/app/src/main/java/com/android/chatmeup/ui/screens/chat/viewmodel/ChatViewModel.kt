@@ -205,7 +205,7 @@ class ChatViewModel @AssistedInject constructor(
 
         //update storage
         byteArray?.let{imageBytes ->
-            context.openFileOutput("$messageID.png", Context.MODE_PRIVATE).use {
+            context.openFileOutput("$chatID/$messageID.png", Context.MODE_PRIVATE).use {
                 it.write(imageBytes)
             }
         }
@@ -270,7 +270,7 @@ class ChatViewModel @AssistedInject constructor(
         messageID: String
     ){
         val file = File(context.filesDir, "$messageID.png")
-        storageRepository.downloadChatImage(chatID, file){result ->
+        storageRepository.downloadChatImage(chatID, messageID, file){result ->
             when(result){
                 is Result.Error -> {
                     Handler(Looper.getMainLooper()).postDelayed({
