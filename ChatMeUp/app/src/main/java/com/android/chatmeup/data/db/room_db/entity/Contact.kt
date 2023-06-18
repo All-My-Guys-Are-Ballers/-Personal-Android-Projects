@@ -11,5 +11,5 @@ data class Contact(
     var email: String,
     var aboutStr: String,
     var localProfilePhotoPath: String,
-    var firebaseProfilePhotoPath: String
+    var onlinePhotoPath: String
 )

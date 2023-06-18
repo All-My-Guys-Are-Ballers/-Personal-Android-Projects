@@ -59,7 +59,7 @@ import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
 import com.android.chatmeup.ui.screens.components.CmuDarkButton
-import com.android.chatmeup.ui.screens.components.CmuInputTextField
+import com.android.chatmeup.ui.screens.components.CmuInputTextFieldWithLabel
 import com.android.chatmeup.ui.screens.components.ImagePage
 import com.android.chatmeup.ui.screens.components.ProfilePicture
 import com.android.chatmeup.ui.screens.homescreen.viewmodel.AddContactEventState
@@ -159,7 +159,7 @@ fun CmuSearchTextField(
     onSearchTextValueChanged: (String) -> Unit
 ) {
     val keyboardState = LocalSoftwareKeyboardController.current
-    CmuInputTextField(
+    CmuInputTextFieldWithLabel(
         modifier = Modifier.height(60.dp),
         label = "",
         placeholder = "Search Chats",
@@ -172,13 +172,13 @@ fun CmuSearchTextField(
             )
         },
         text = searchTextValue,
-        shape = RoundedCornerShape(10),
         onValueChanged = onSearchTextValueChanged,
+        onDone = { keyboardState?.hide() },
 //        trailingIcon =
 //        {
 //            Icon(imageVector = Icons.Default.Cancel, contentDescription = "Cancel Search")
 //        },
-        onDone = { keyboardState?.hide() },
+        shape = RoundedCornerShape(10),
     )
 }
 
@@ -394,11 +394,11 @@ fun AddContactDialog(
     addContactEventState: AddContactEventState,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        CmuInputTextField(
+        CmuInputTextFieldWithLabel(
             label = "",
             placeholder = "Contact Email",
             text = newContactEmail,
-            onValueChanged = onNewContactEmailChanged
+            onValueChanged = onNewContactEmailChanged,
         )
         CmuDarkButton(
             modifier = Modifier.padding(bottom = 20.dp),

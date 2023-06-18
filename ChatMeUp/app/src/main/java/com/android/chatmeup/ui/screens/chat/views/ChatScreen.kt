@@ -11,19 +11,21 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.ModalBottomSheetLayout
 import androidx.compose.material.ModalBottomSheetState
@@ -37,6 +39,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -45,6 +48,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -66,7 +70,7 @@ import com.android.chatmeup.ui.cmutoast.CmuToastStyle
 import com.android.chatmeup.ui.screens.chat.data.ChatState
 import com.android.chatmeup.ui.screens.chat.viewmodel.ChatViewModel
 import com.android.chatmeup.ui.screens.chat.viewmodel.chatViewModelProvider
-import com.android.chatmeup.ui.screens.components.CmuInputTextField
+import com.android.chatmeup.ui.screens.components.CmuOutlinedTextField
 import com.android.chatmeup.ui.screens.components.ProfilePicture
 import com.android.chatmeup.ui.screens.components.TextImage
 import com.android.chatmeup.ui.screens.components.UploadFileOptionDialog
@@ -290,6 +294,7 @@ fun ChatListScreen(
     ModalBottomSheetLayout(
         sheetState = modalBottomSheetState,
         sheetBackgroundColor = MaterialTheme.colorScheme.background,
+        sheetShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         sheetContent = {
             UploadFileOptionDialog(
                 title = "Upload Media",
@@ -450,7 +455,7 @@ fun ChatBottomBar(
     onAddItemClicked: () -> Unit,
     onSendMessagePressed: () -> Unit,
 ) {
-    Surface(color = MaterialTheme.colorScheme.background) {
+    Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.wrapContentSize()) {
         Row(
             modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -463,20 +468,41 @@ fun ChatBottomBar(
                 )
             }
 
-            CmuInputTextField(
-                label = "",
-                placeholder = "Message",
-                modifier = Modifier
-                    .weight(1f)
-                    .height(40.dp),
-                paddingValues = PaddingValues(),
-                singleLine = false,
-                maxLines = 3,
-                text = messageText,
-                shape = RoundedCornerShape(10),
-                onValueChanged = {
+            var isSingleLine by remember {
+                mutableStateOf(false)
+            }
+            var maxLines by remember {
+                mutableStateOf(1)
+            }
+            CmuOutlinedTextField(
+                value = messageText,
+                onValueChange = {
                     viewModel.newMessageText.value = it
                 },
+//                    .height(40.dp),
+                modifier = Modifier.weight(1f).heightIn(min = 40.dp, max = 100.dp),
+                placeholder = {
+                    Text(
+                        text = "Message",
+                        color = neutral_disabled,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.CenterVertically)
+                    ) },
+                singleLine = isSingleLine,
+                maxLines = 3,
+                shape = RoundedCornerShape(10.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    selectionColors = TextSelectionColors(
+                        backgroundColor = neutral_disabled,
+                        handleColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ),
             )
 
             IconButton(onClick = {

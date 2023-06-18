@@ -71,19 +71,19 @@ fun UploadImageScreen(
                     modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    CmuInputTextField(
-                        label = "",
-                        placeholder = "Message",
+                    CmuInputTextFieldWithLabel(
                         modifier = Modifier
                             .padding(start = 15.dp)
                             .weight(1f)
                             .height(40.dp),
+                        label = "",
+                        placeholder = "Message",
                         paddingValues = PaddingValues(),
                         singleLine = false,
                         maxLines = 3,
                         text = messageText,
-                        shape = RoundedCornerShape(10),
                         onValueChanged = onValueChanged,
+                        shape = RoundedCornerShape(10),
                     )
 
                     IconButton(onClick = onSendMessage) {

@@ -55,10 +55,10 @@ fun InputStringDialog(
             textAlign = TextAlign.Start,
             color = MaterialTheme.colorScheme.onBackground
         )
-        CmuInputTextField(
+        CmuInputTextFieldWithLabel(
             placeholder = "Display Name",
-            text = input,
             paddingValues = PaddingValues(start = 15.dp, end = 15.dp, top = 16.dp),
+            text = input,
             onValueChanged = onValueChanged,
             trailingIcon = {
                 Text(
@@ -67,7 +67,7 @@ fun InputStringDialog(
                     style = MaterialTheme.typography.labelLarge,
                     color = neutral_disabled
                 )
-            }
+            },
         )
 
 

@@ -67,7 +67,7 @@ import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
 import com.android.chatmeup.ui.screens.components.CmuDarkButton
-import com.android.chatmeup.ui.screens.components.CmuInputTextField
+import com.android.chatmeup.ui.screens.components.CmuInputTextFieldWithLabel
 import com.android.chatmeup.ui.screens.components.UploadFileOptionDialog
 import com.android.chatmeup.ui.theme.cmuBlue
 import com.android.chatmeup.util.createTempImageFile
@@ -289,7 +289,7 @@ fun RegisterUserScreen(
                     }
                 }
                 Spacer(modifier = Modifier.height(10.dp))
-                CmuInputTextField(
+                CmuInputTextFieldWithLabel(
                     modifier = Modifier
                         .height(85.dp),
                     label = "Display Name",
@@ -300,7 +300,7 @@ fun RegisterUserScreen(
                         displayName = value
                     },
                 )
-                CmuInputTextField(
+                CmuInputTextFieldWithLabel(
                     modifier = Modifier
                         .height(85.dp),
                     label = "Email",
@@ -312,7 +312,7 @@ fun RegisterUserScreen(
                         isEmailValid.value = email.isEmailValid()
                     },
                 )
-                CmuInputTextField(
+                CmuInputTextFieldWithLabel(
                     modifier = Modifier
                         .height(85.dp),
                     label = "Password",
@@ -334,7 +334,7 @@ fun RegisterUserScreen(
                     },
                     visualTransformation = if (isPasswordVisible.value) VisualTransformation.None else PasswordVisualTransformation(),
                 )
-                CmuInputTextField(
+                CmuInputTextFieldWithLabel(
                     modifier = Modifier
                         .height(85.dp),
                     label = "Confirm Password",

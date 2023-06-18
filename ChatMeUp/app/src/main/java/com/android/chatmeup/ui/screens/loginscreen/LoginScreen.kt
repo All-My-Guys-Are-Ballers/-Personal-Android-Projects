@@ -49,7 +49,7 @@ import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
 import com.android.chatmeup.ui.screens.components.CmuDarkButton
-import com.android.chatmeup.ui.screens.components.CmuInputTextField
+import com.android.chatmeup.ui.screens.components.CmuInputTextFieldWithLabel
 import com.android.chatmeup.ui.screens.components.Logo
 import com.android.chatmeup.ui.theme.cmuBlue
 import com.android.chatmeup.util.isEmailValid
@@ -126,7 +126,7 @@ fun LoginScreen(
                     textAlign = TextAlign.Start
                 )
                 Spacer(modifier = Modifier.height(10.dp))
-                CmuInputTextField(
+                CmuInputTextFieldWithLabel(
                     modifier = Modifier,
                     label = "Email",
                     placeholder = "Enter your email address",
@@ -137,7 +137,7 @@ fun LoginScreen(
                         isEmailValid.value = email.isEmailValid()
                     },
                 )
-                CmuInputTextField(
+                CmuInputTextFieldWithLabel(
                     modifier = Modifier,
                     label = "Password",
                     placeholder = "Enter your password",

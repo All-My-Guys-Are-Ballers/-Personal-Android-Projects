@@ -80,7 +80,7 @@ import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
 import com.android.chatmeup.ui.screens.components.CmuDarkButton
-import com.android.chatmeup.ui.screens.components.CmuInputTextField
+import com.android.chatmeup.ui.screens.components.CmuInputTextFieldWithLabel
 import com.android.chatmeup.ui.screens.components.CmuTopBar
 import com.android.chatmeup.ui.screens.components.ImagePage
 import com.android.chatmeup.ui.screens.components.InputStringDialog
@@ -641,7 +641,7 @@ fun EditDisplayNameDialog(
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         BottomSheetDefaults.DragHandle(modifier = Modifier.align(Alignment.CenterHorizontally))
-        CmuInputTextField(
+        CmuInputTextFieldWithLabel(
             placeholder = "Display Name",
             text = displayName,
             onValueChanged = onValueChanged,
@@ -652,7 +652,7 @@ fun EditDisplayNameDialog(
                     style = MaterialTheme.typography.labelLarge,
                     color = neutral_disabled
                 )
-            }
+            },
         )
 
 
