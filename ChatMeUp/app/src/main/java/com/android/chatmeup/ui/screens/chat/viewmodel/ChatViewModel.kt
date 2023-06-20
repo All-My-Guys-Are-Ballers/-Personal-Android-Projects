@@ -24,6 +24,7 @@ import com.android.chatmeup.data.db.firebase_db.repository.DatabaseRepository
 import com.android.chatmeup.data.db.firebase_db.repository.StorageRepository
 import com.android.chatmeup.data.db.room_db.ChatMeUpDatabase
 import com.android.chatmeup.data.db.room_db.data.MessageStatus
+import com.android.chatmeup.data.db.room_db.data.MessageType
 import com.android.chatmeup.ui.DefaultViewModel
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
@@ -53,7 +54,7 @@ import java.util.Locale
 class ChatViewModel @AssistedInject constructor(
     @Assisted("chatId") private val chatID: String,
     @Assisted("myUserId") private val myUserID: String,
-    @Assisted("otherUserId") private val otherUserId: String,
+    @Assisted("otherUserId") private val otherUserID: String,
     private val cmuDataStoreRepository: CmuDataStoreRepository,
     private val chatMeUpDatabase: ChatMeUpDatabase,
 ) : DefaultViewModel() {
@@ -126,7 +127,7 @@ class ChatViewModel @AssistedInject constructor(
     }
 
     private fun setupChat() {
-        dbRepository.loadAndObserveUserInfo(otherUserId, fbRefUserInfoObserver) { result: Result<UserInfo> ->
+        dbRepository.loadAndObserveUserInfo(otherUserID, fbRefUserInfoObserver) { result: Result<UserInfo> ->
             onResult(_otherUser, result)
             if (result is Result.Success && !fbRefMessagesChildObserver.isObserving()) {
                 loadAndObserveNewMessages()
@@ -154,7 +155,7 @@ class ChatViewModel @AssistedInject constructor(
             if(result is Result.Success){
                 onResult(_addedMessage, result)
                 result.data?.let{
-                    if (it.senderID == otherUserId && !it.seen) {
+                    if (it.senderID == otherUserID && !it.seen) {
                         dbRepository.updateSeenMessage(chatID, it.messageID, true)
                     }
                 }
@@ -182,11 +183,12 @@ class ChatViewModel @AssistedInject constructor(
                 chatID = chatID,
                 messageStatus = MessageStatus.UNSENT,
                 lowQualityThumbnail = lowQualityThumbnail,
-                fileName = if(newPhotoURI != null) chatID+timeStamp else null
+                localFilePath = if(newPhotoURI != null) chatID+timeStamp else null,
+                messageType = if(lowQualityThumbnail != null) MessageType.TEXT_IMAGE.toString() else MessageType.TEXT.toString()
             )
             chatMeUpDatabase.messageDao.upsertMessage(message)
 
-            val remoteMessage = RemoteMessage.Builder(otherUserId+"@fcm.googleapais.com")
+            val remoteMessage = RemoteMessage.Builder(otherUserID+"@fcm.googleapais.com")
                 .setMessageId(messageID)
                 .addData("messageText" , newMessageText.value!!)
                 .addData("messageTime", messageTime.toString())
@@ -215,12 +217,12 @@ class ChatViewModel @AssistedInject constructor(
                 val newMsg = Message(
                     messageID = messageID,
                     senderID = myUserID,
-                    receiverID =  otherUserId,
+                    receiverID =  otherUserID,
                     text = newMessageText.value!!,
                     messageType = "TEXT",
                     epochTimeMs = messageTime
                 )
-                dbRepository.updateNewMessage(chatID, newMsg)
+                dbRepository.updateNewMessage(otherUserID, chatID, newMsg)
                 checkAndUpdateUnreadMessages(newMsg)
                 newMessageText.value = ""
             }
@@ -229,7 +231,7 @@ class ChatViewModel @AssistedInject constructor(
             val msg = Message(
                 messageID = messageID,
                 senderID = myUserID,
-                receiverID =  otherUserId,
+                receiverID =  otherUserID,
                 text = newMessageText.value!!,
                 lowQualityThumbnail = String(lowQualityThumbnail),
                 epochTimeMs = messageTime
@@ -244,7 +246,7 @@ class ChatViewModel @AssistedInject constructor(
                         val newMsg = msg.apply {
                             imageUrl = result.data.toString()
                         }
-                        dbRepository.updateNewMessage(chatID, newMsg)
+                        dbRepository.updateNewMessage(otherUserID, chatID, newMsg)
                         checkAndUpdateUnreadMessages(newMsg)
                         newMessageText.value = ""
                     } else if(result is Result.Error){
@@ -294,7 +296,7 @@ class ChatViewModel @AssistedInject constructor(
                     //update database
                     ioScope.launch {
                         val message = chatMeUpDatabase.messageDao.getMessage(messageID)
-                        chatMeUpDatabase.messageDao.upsertMessage(message.apply { fileName = "$messageID.png" })
+                        chatMeUpDatabase.messageDao.upsertMessage(message.apply { localFilePath = "$messageID.png" })
                     }
                 }
             }

@@ -7,6 +7,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.rememberNavController
 import com.android.chatmeup.CmuApplication
 import com.android.chatmeup.CmuNavHost
+import com.android.chatmeup.data.db.firebase_db.remote.FirebaseReferenceChildObserver
 import com.android.chatmeup.ui.screens.homescreen.navigation.HomeDestination
 import com.android.chatmeup.ui.screens.loginscreen.LoginDestination
 import com.google.firebase.auth.ktx.auth
@@ -16,6 +17,8 @@ import com.google.firebase.ktx.Firebase
 @Composable
 fun CmuApp(
     chatMeUpApp: CmuApplication,
+    newMessagesObserver: FirebaseReferenceChildObserver,
+    startObserving: () -> Unit
 ) {
     val appState: CmuAppState = rememberChatMeUpAppState(
         context = LocalContext.current,
@@ -28,7 +31,12 @@ fun CmuApp(
         activity = appState.appStateActivity,
         navController = appState.navController,
         onBackClick = appState::navigateBack,
-        onNavigateToDestination = appState::navigate,
+        onNavigateToDestination = {backStackEntry, navigationDestination, route ->
+            if(!newMessagesObserver.isObserving()){
+                startObserving()
+            }
+            appState.navigate(backStackEntry, navigationDestination, route)
+        },
         startDestination = if(Firebase.auth.currentUser == null) LoginDestination.route else HomeDestination.route
     )
 }

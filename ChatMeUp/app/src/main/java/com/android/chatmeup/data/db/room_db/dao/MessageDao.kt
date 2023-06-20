@@ -21,6 +21,9 @@ interface MessageDao{
     @Query("SELECT * FROM message WHERE :chatID = chatID ORDER BY messageTime DESC")
     fun getMessagesOrderedByTime(chatID: String): Flow<List<Message>>
 
+    @Query("SELECT * FROM message WHERE :chatID = chatID ORDER BY messageTime DESC LIMIT 1")
+    fun getLastMessage(chatID: String): Flow<Message>
+
     @Query("SELECT * FROM message WHERE messageText LIKE :searchText ORDER BY messageTime DESC")
     fun searchMessagesOrderedByTime(searchText: String): Flow<List<Message>>
 }

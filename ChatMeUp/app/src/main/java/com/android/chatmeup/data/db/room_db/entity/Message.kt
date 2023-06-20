@@ -17,10 +17,12 @@ data class Message(
     val messageId: String, //chatId + messageId
     val messageText: String,
     val messageTime: Long,
+    val messageType: String,
     val senderID: String,
     @ColumnInfo(typeAffinity = ColumnInfo.BLOB)
     val lowQualityThumbnail: ByteArray? = null,
-    var fileName: String? = null,
+    var localFilePath: String? = null,
+    var serverFilePath: String? = null,
     val messageStatus: MessageStatus,
     val chatID: String,
 ) {

@@ -2,7 +2,6 @@ package com.android.chatmeup.ui.screens.homescreen
 
 import android.app.Activity
 import android.content.Context
-import android.net.Uri
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
@@ -38,7 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.android.chatmeup.R
 import com.android.chatmeup.data.db.firebase_db.entity.UserInfo
-import com.android.chatmeup.data.model.ChatWithUserInfo
+import com.android.chatmeup.data.db.room_db.entity.Chat
 import com.android.chatmeup.ui.screens.components.ProfilePicture
 import com.android.chatmeup.ui.screens.homescreen.components.BottomSheetScreen
 import com.android.chatmeup.ui.screens.homescreen.components.ChatListItem
@@ -56,6 +55,7 @@ import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.launch
+import java.io.File
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalPagerApi::class, ExperimentalMaterialApi::class, ExperimentalComposeUiApi::class)
@@ -79,7 +79,7 @@ fun HomeScreen(
 
     val myUserInfo by viewModel.myUpdatedInfo.observeAsState()
 
-    val chatsList by viewModel.chatsList.observeAsState()
+    val _viewState by viewModel.viewState.collectAsState()
 
     val notificationsList by viewModel.notificationListWithUserInfo.observeAsState()
 
@@ -89,8 +89,7 @@ fun HomeScreen(
 
     var selectedImageTitle by rememberSaveable { mutableStateOf("Profile Picture") }
 
-    var selectedImageUri by rememberSaveable { mutableStateOf(Uri.parse(myUserInfo?.profileImageUrl
-        ?: "")) }
+    var selectedImageFile by rememberSaveable { mutableStateOf(File(context.filesDir, "")) }
 
     val pagerState = rememberPagerState(1)
 
@@ -152,7 +151,7 @@ fun HomeScreen(
                 onNewContactEmailChanged = {newContactEmail= it},
                 addContactEventState = addContactEventState,
                 selectedImageTitle = selectedImageTitle,
-                selectedImageUri = selectedImageUri,
+                selectedImageUri = selectedImageFile,
                 onCloseImage = {
                     systemUiController.setSystemBarsColor(
                         color = if (isDarkTheme) md_theme_dark_background else md_theme_light_background,
@@ -255,17 +254,23 @@ fun HomeScreen(
                     0 -> Text(text = "Contacts")
                     1 -> ChatsScreen(
                         modifier = Modifier.padding(it),
+                        context = context,
                         searchTextValue = searchText,
                         onSearchTextValueChanged = { searchText = it },
-                        list = chatsList,
+                        list = _viewState.chatsList,
                         myUserId = viewModel.myUserId,
-                        onProfileImageClicked = {userInfo: UserInfo ->
-                            selectedImageTitle = userInfo.displayName
-                            selectedImageUri = Uri.parse(userInfo.profileImageUrl)
-                            currentBottomSheet = BottomSheetScreen.ProfileImage
-                            systemUiController.setSystemBarsColor(Color.Black, darkIcons = false)
-                            scope.launch {
-                                modalBottomSheetState.show()
+                        onProfileImageClicked = { localPhotoPath, displayName ->
+                            selectedImageTitle = displayName
+                            selectedImageFile = File(context.filesDir, localPhotoPath)
+                            if(selectedImageFile.exists()){
+                                currentBottomSheet = BottomSheetScreen.ProfileImage
+                                systemUiController.setSystemBarsColor(
+                                    Color.Black,
+                                    darkIcons = false
+                                )
+                                scope.launch {
+                                    modalBottomSheetState.show()
+                                }
                             }
                         },
                         onNavigateToChat = onNavigateToChat,
@@ -291,10 +296,11 @@ fun HomeScreen(
 @Composable
 fun ChatsScreen(
     modifier: Modifier = Modifier,
+    context: Context,
     searchTextValue: String,
     onSearchTextValueChanged: (String) -> Unit,
-    onProfileImageClicked: (UserInfo) -> Unit,
-    list: MutableList<ChatWithUserInfo>?,
+    onProfileImageClicked: (String, String) -> Unit,
+    list: List<Chat>,
     myUserId: String,
     onNavigateToChat: (String) -> Unit
 ){
@@ -308,10 +314,10 @@ fun ChatsScreen(
                 onSearchTextValueChanged = onSearchTextValueChanged,
             )
             Spacer(modifier = Modifier.height(10.dp))
-            if(!list.isNullOrEmpty()){
-                val sortedList = list.sortedByDescending { it.mChat.lastMessage.epochTimeMs }
+            if(list.isNotEmpty()){
                 ChatList(
-                    list = sortedList,
+                    list = list,
+                    context = context,
                     myUserId = myUserId,
                     onNavigateToChat = onNavigateToChat,
                     onProfileImageClicked = onProfileImageClicked,
@@ -357,10 +363,11 @@ fun MoreScreen(
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ChatList(
-    list: List<ChatWithUserInfo>,
+    context: Context,
+    list: List<Chat>,
     myUserId: String,
     onNavigateToChat: (String) -> Unit,
-    onProfileImageClicked: (UserInfo) -> Unit
+    onProfileImageClicked: (String, String) -> Unit
 ){
     LazyColumn(
         modifier = Modifier.padding(start = 25.dp, end = 25.dp),
@@ -370,13 +377,13 @@ fun ChatList(
             item {
                 ChatListItem(
                     modifier = Modifier.padding(vertical = 10.dp),
+                    context = context,
                     myUserId = myUserId,
                     item = list[it],
-                    onNavigateToChat = onNavigateToChat,
-                    onProfileImageClicked = {
-                        onProfileImageClicked(list[it].mUserInfo)
-                    }
-                )
+                    onNavigateToChat = onNavigateToChat
+                ) {
+                    onProfileImageClicked(list[it].profilePhotoPath, list[it].displayName)
+                }
             }
         }
     }
@@ -396,7 +403,7 @@ fun UserInfoWithProfilePicture(
     ) {
         Row() {
             ProfilePicture(
-                imageUrl = myUserInfo.profileImageUrl,
+                imageFile = myUserInfo.profileImageUrl,
                 size = 60.dp,
                 shape = CircleShape
             )

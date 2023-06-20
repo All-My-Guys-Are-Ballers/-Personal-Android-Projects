@@ -31,6 +31,7 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.ModalBottomSheetLayout
 import androidx.compose.material.ModalBottomSheetState
 import androidx.compose.material.ModalBottomSheetValue
+import androidx.compose.material.Surface
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
@@ -343,15 +344,15 @@ fun EditProfileScreen(
             },
             onConfirmProfileImage =
             {
+                scope.launch {
+                    modalBottomSheetState.hide()
+                }
                 newProfileImageURI?.let { it1 ->
                     editProfileViewModel.updateProfileImage(
                         context = context,
                         activity = activity,
                         imageUri = it1,
                     )
-                }
-                scope.launch {
-                    modalBottomSheetState.hide()
                 }
             },
             onRotateProfileImage = {
@@ -464,24 +465,34 @@ fun EditProfileScreen(
                                     containerColor = MaterialTheme.colorScheme.tertiaryContainer
                                 )
                             ) {
-                                if (profileImageFile?.exists() != true) {
-                                    Icon(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(40.dp),
-                                        imageVector = ImageVector.vectorResource(id = R.drawable.ic_profile),
-                                        contentDescription = "Upload profile picture",
-                                        tint = MaterialTheme.colorScheme.onBackground
-                                    )
-                                } else {
-                                    Image(
-                                        painter = imagePainter,
-                                        contentDescription = "Profile Picture",
-                                        modifier = Modifier
-                                            .fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
+                                Box(modifier = Modifier.fillMaxSize()){
+                                    if (profileImageFile?.exists() != true) {
+                                        Icon(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(40.dp),
+                                            imageVector = ImageVector.vectorResource(id = R.drawable.ic_profile),
+                                            contentDescription = "Upload profile picture",
+                                            tint = MaterialTheme.colorScheme.onBackground
+                                        )
+                                    } else {
+                                        Image(
+                                            painter = imagePainter,
+                                            contentDescription = "Profile Picture",
+                                            modifier = Modifier
+                                                .fillMaxSize(),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
+                                    if(isUpdatingProfileImage){
+                                        Surface(color = neutral_disabled.copy(0.6f), modifier = Modifier.fillMaxSize()) {
+                                            CircularProgressIndicator(color = seed, strokeWidth = 5.dp, modifier = Modifier.align(Alignment.Center))
+                                        }
+                                    }
+
+
                                 }
+
                             }
                             Card(
                                 colors = CardDefaults.cardColors(

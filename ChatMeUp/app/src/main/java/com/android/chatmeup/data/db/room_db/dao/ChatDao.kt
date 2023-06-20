@@ -21,6 +21,6 @@ interface ChatDao{
     @Query("SELECT * FROM chat ORDER BY lastMessageTime DESC")
     fun getChatsOrderedByTime(): Flow<List<Chat>>
 
-    @Query("SELECT * FROM chat WHERE lastMessageText LIKE :searchText ORDER BY lastMessageTime DESC")
-    fun searchChatsOrderedByTime(searchText: String): Flow<List<Chat>>
+//    @Query("SELECT * FROM chat WHERE lastMessageText LIKE :searchText ORDER BY lastMessageTime DESC")
+//    fun searchChatsOrderedByTime(searchText: String): Flow<List<Chat>>
 }

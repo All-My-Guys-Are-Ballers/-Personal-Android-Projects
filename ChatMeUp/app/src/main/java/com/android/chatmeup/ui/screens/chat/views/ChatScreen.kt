@@ -431,7 +431,7 @@ fun ChatTopBar(otherUserInfo: UserInfo?,
                 )
             }
             ProfilePicture(
-                imageUrl = otherUserInfo?.profileImageUrl ?: "",
+                imageFile = otherUserInfo?.profileImageUrl ?: "",
                 size = 40.dp,
                 isOnline = otherUserInfo?.online ?: false
             )

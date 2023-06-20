@@ -174,6 +174,7 @@ class LoginScreenViewModel @Inject constructor(
                                         senderID = message.senderID,
                                         messageStatus = MessageStatus.UNSENT,
                                         lowQualityThumbnail = message.lowQualityThumbnail.toByteArray(),
+                                        messageType = message.messageType
                                     )
                                 )
                             }
@@ -188,7 +189,7 @@ class LoginScreenViewModel @Inject constructor(
         }
     }
 
-    private fun loadChat(otherUserID: String) {
+    private fun loadChat(otherUserID: String, chat: Chat?) {
         try {
             dbRepository.loadChat(
                 convertTwoUserIDs(
@@ -204,20 +205,31 @@ class LoginScreenViewModel @Inject constructor(
                         //do nothing for now
                     }
                     is Result.Success -> {
-                        chatResult.data?.let{chat ->
+                        chatResult.data?.let{chatResult ->
                             ioScope.launch{
-                                chatMeUpDatabase.chatDao.upsertChat(
-                                    Chat(
-                                        id = chat.info.id,
-                                        no_of_unread_messages = chat.info.no_of_unread_messages,
-                                        lastMessageTime = chat.lastMessage.epochTimeMs,
-                                        lastMessageText = chat.lastMessage.text,
-                                        messageType = enumValueOf(chat.lastMessage.messageType),
-                                        lastMessageSenderID = chat.lastMessage.senderID
+                                chat?.copy(
+                                    id = chatResult.info.id,
+                                    no_of_unread_messages = chatResult.info.no_of_unread_messages,
+                                    lastMessageTime = chatResult.lastMessage.epochTimeMs,
+                                    lastMessageText = chatResult.lastMessage.text,
+                                    messageType = enumValueOf(chatResult.lastMessage.messageType),
+                                    lastMessageSenderID = chatResult.lastMessage.senderID
+                                )?.let {
+                                    chatMeUpDatabase.chatDao.upsertChat(
+                                        it
+                                    )
+                                }?: chatMeUpDatabase.chatDao.upsertChat(Chat(
+                                        id = chatResult.info.id,
+                                        no_of_unread_messages = chatResult.info.no_of_unread_messages,
+                                        lastMessageTime = chatResult.lastMessage.epochTimeMs,
+                                        lastMessageText = chatResult.lastMessage.text,
+                                        messageType = enumValueOf(chatResult.lastMessage.messageType),
+                                        lastMessageSenderID = chatResult.lastMessage.senderID,
+                                    otherUserId = otherUserID
                                     )
                                 )
                             }
-                            loadMessages(chatID = chat.info.id)
+                            loadMessages(chatID = chatResult.info.id)
                         } ?: {
                             Timber.tag(tag).e("Unable to load Chat for ${
                                 convertTwoUserIDs(
@@ -272,7 +284,7 @@ class LoginScreenViewModel @Inject constructor(
                                 it1.displayName,
                                 it1.aboutStr,
                                 isMine = true,
-                                email = it1.email
+                                email = it1.email,
                             )
                         }
                     }
@@ -317,7 +329,6 @@ class LoginScreenViewModel @Inject constructor(
                                         }
                                     }
                                 }
-                                loadChat(otherUserID = contact.userID)
                             }
                         }
                         onEventTriggered(LoginEvents.DoneEvent(it))
@@ -351,6 +362,9 @@ class LoginScreenViewModel @Inject constructor(
         status: String,
         isMine: Boolean,
         email: String,
+//        lastMessageText: String,
+//        lastMessageTime: Long,
+//        messageType: MessageType,
     ){
         val localPath = "profile_photos/${if(isMine) "my_profile" else userID}.png"
         storageRepository.downloadProfileImage(userID, context, localPath) { result ->
@@ -392,6 +406,20 @@ class LoginScreenViewModel @Inject constructor(
                             "user_photos/$userID/profile_image"
                         )
                         chatMeUpDatabase.contactDao.upsertContact(contact)
+
+                        if(!isMine){
+                            var chat: Chat? = null
+                            myUserID?.let{myUserID ->
+                                chat = Chat(
+                                    id = convertTwoUserIDs(myUserID, userID),
+                                    displayName = displayName,
+                                    profilePhotoPath = localPath,
+                                    otherUserId = userID
+                                )
+                            }
+                            loadChat(userID, chat)
+                        }
+
                         Timber.tag(tag).d("Contact Saved for $displayName")
                     }
                 }

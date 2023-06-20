@@ -137,7 +137,8 @@ class EditProfileViewModel @Inject constructor(private val chatMeUpDatabase: Cha
         context: Context,
         activity: Activity?,
         imageUri: Uri
-    ){
+    )= ioScope.launch{
+        _isUpdatingProfileImage.value = true
         val imageByteArray = convertFileToByteArray(context, imageUri)
         if (imageByteArray != null) {
             storageRepository.updateUserProfileImage(myUserID, imageByteArray){ result ->
@@ -167,7 +168,7 @@ class EditProfileViewModel @Inject constructor(private val chatMeUpDatabase: Cha
                         if(file.exists()){
                             file.delete()
                         }
-                            file.createNewFile()
+                        file.createNewFile()
                         val fos = FileOutputStream(file)
                         fos.write(imageByteArray)
                         fos.close()

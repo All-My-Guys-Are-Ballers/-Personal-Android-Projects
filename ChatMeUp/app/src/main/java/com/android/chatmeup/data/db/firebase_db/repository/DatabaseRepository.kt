@@ -42,8 +42,8 @@ class DatabaseRepository {
             .addOnCanceledListener { b.invoke(Result.Error()) }
     }
 
-    fun updateNewMessage(chatID: String, message: Message) {
-        firebaseDatabaseService.pushNewMessage(chatID, message)
+    fun updateNewMessage(userID: String, chatID: String, message: Message) {
+        firebaseDatabaseService.pushNewMessage(userID, chatID, message)
     }
 
     fun updateNewUser(user: User) {
@@ -103,6 +103,10 @@ class DatabaseRepository {
 
     fun removeMessages(messagesID: String){
         firebaseDatabaseService.removeMessages(messagesID)
+    }
+
+    fun removeNewMessages(userID: String, messageID: String){
+        firebaseDatabaseService.removeNewMessages(userID, messageID)
     }
 
     //endregion
@@ -208,6 +212,10 @@ class DatabaseRepository {
 
     fun loadAndObserveMessagesAdded(messagesID: String, observer: FirebaseReferenceChildObserver, b: ((Result<Message>) -> Unit)) {
         firebaseDatabaseService.attachMessagesObserver(Message::class.java, messagesID, observer, b)
+    }
+
+    fun loadAndObserveNewMessagesAdded(userID: String, observer: FirebaseReferenceChildObserver, b: ((Result<Message>) -> Unit)) {
+        firebaseDatabaseService.attachNewMessagesObserver(Message::class.java, userID, observer, b)
     }
 
     fun loadAndObserveChat(chatID: String, observer: FirebaseReferenceValueObserver, b: ((Result<Chat>) -> Unit)) {

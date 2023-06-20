@@ -11,9 +11,12 @@ import com.android.chatmeup.data.db.room_db.data.MessageTypeEnumConverter
 data class Chat(
     @PrimaryKey(autoGenerate = false)
     val id: String,
-    val no_of_unread_messages: Int,
-    val lastMessageText: String,
-    val lastMessageTime: Long,
-    val messageType: MessageType,
-    val lastMessageSenderID: String
+    var no_of_unread_messages: Int = 0,
+    var displayName: String = "",
+    var lastMessageText: String = "",
+    var lastMessageTime: Long = 0,
+    var messageType: MessageType = MessageType.TEXT,
+    val lastMessageSenderID: String = "",
+    val otherUserId: String = "",
+    var profilePhotoPath: String = ""
 )

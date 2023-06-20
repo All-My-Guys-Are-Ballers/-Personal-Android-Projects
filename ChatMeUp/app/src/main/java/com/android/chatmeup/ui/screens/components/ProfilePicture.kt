@@ -1,6 +1,5 @@
 package com.android.chatmeup.ui.screens.components
 
-import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -32,17 +31,18 @@ import com.android.chatmeup.ui.theme.success_green
 import com.google.accompanist.placeholder.PlaceholderHighlight
 import com.google.accompanist.placeholder.placeholder
 import com.google.accompanist.placeholder.shimmer
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfilePicture(
     modifier: Modifier = Modifier,
-    imageUrl: String,
+    imageFile: Any,
     isOnline: Boolean = false,
     size: Dp = 60.dp,
     shape: Shape = RoundedCornerShape(30),
 ){
-    val painter = rememberAsyncImagePainter(Uri.parse(imageUrl))
+    val painter = rememberAsyncImagePainter(imageFile)
     BadgedBox(
         modifier = modifier
             .size(size)
@@ -75,7 +75,7 @@ fun ProfilePicture(
             }
         },
     ){
-        if(imageUrl.isNotBlank()){
+        if(imageFile is String && imageFile.isNotEmpty() || imageFile is File && imageFile.exists()){
             Image(
                 modifier = Modifier
                     .clip(shape)

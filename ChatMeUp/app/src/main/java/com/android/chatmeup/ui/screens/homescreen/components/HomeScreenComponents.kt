@@ -2,7 +2,6 @@ package com.android.chatmeup.ui.screens.homescreen.components
 
 import android.app.Activity
 import android.content.Context
-import android.net.Uri
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
@@ -54,7 +53,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.chatmeup.R
 import com.android.chatmeup.data.db.firebase_db.entity.UserInfo
-import com.android.chatmeup.data.model.ChatWithUserInfo
+import com.android.chatmeup.data.db.room_db.entity.Chat
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
@@ -76,19 +75,21 @@ import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.PagerState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import java.io.File
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatListItem(
     modifier: Modifier = Modifier,
+    context: Context,
     myUserId: String,
-    item: ChatWithUserInfo,
+    item: Chat,
     onNavigateToChat: (String) -> Unit,
     onProfileImageClicked: () -> Unit
 ){
     Card(onClick = {
-        onNavigateToChat("${item.mChat.info.id}%%%${myUserId}%%%${item.mUserInfo.id}%%%${item.mChat.info.no_of_unread_messages}")
+        onNavigateToChat("${item.id}%%%${myUserId}%%%${item.otherUserId}%%%${item.no_of_unread_messages}")
     },
         shape = RectangleShape,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)
@@ -98,21 +99,21 @@ fun ChatListItem(
                 modifier = Modifier.clickable {
                     onProfileImageClicked()
                 },
-                imageUrl = item.mUserInfo.profileImageUrl,
-                isOnline = item.mUserInfo.online,
+                imageFile = File(context.filesDir, item.profilePhotoPath),
+                isOnline = false,
                 size = 60.dp
             )
             Spacer(modifier = Modifier.width(20.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = item.mUserInfo.displayName,
+                    text = item.displayName,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = item.mChat.lastMessage.text,
+                    text = item.lastMessageText,
                     overflow = TextOverflow.Ellipsis,
                     color = neutral_disabled,
                     style = MaterialTheme.typography.labelLarge,
@@ -125,12 +126,12 @@ fun ChatListItem(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = convertEpochToString(item.mChat.lastMessage.epochTimeMs),
+                    text = convertEpochToString(item.lastMessageTime),
                     color = neutral_disabled,
                     style = MaterialTheme.typography.labelLarge
                 )
                 Spacer(modifier = Modifier.height(10.dp))
-                if(!item.mChat.lastMessage.seen && item.mChat.lastMessage.senderID == item.mUserInfo.id){
+                if(item.lastMessageSenderID == item.id){
                     Card(
                         shape = CircleShape,
                         colors = CardDefaults.cardColors(
@@ -138,7 +139,7 @@ fun ChatListItem(
                         )
                     ) {
                         Text(
-                            text = item.mChat.info.no_of_unread_messages.toString(),
+                            text = item.no_of_unread_messages.toString(),
                             modifier = Modifier.padding(
                                 start = 8.dp, end = 8.dp, top = 4.dp, bottom = 4.dp
                             ),
@@ -334,7 +335,7 @@ fun RequestsList(
             item {
                 Row() {
                     ProfilePicture(
-                        imageUrl = notificationsList[it].profileImageUrl,
+                        imageFile = notificationsList[it].profileImageUrl,
                         isOnline = true,
                         size = 90.dp
                     )
@@ -431,7 +432,7 @@ fun SheetLayout(
     context: Context,
     activity: Activity?,
     selectedImageTitle: String,
-    selectedImageUri: Uri,
+    selectedImageUri: Any,
     addContactEventState: AddContactEventState,
     viewModel: HomeViewModel,
     notificationsList: List<UserInfo>?,

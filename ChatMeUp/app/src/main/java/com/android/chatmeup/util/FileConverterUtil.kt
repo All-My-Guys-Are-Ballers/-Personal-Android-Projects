@@ -25,7 +25,7 @@ fun convertFileToByteArray(context: Context, uri: Uri?): ByteArray? {
     var quality = 100
     while (byteArrayOutputStream.toByteArray().size > MAX_FILE_SIZE && quality > 0) {
         byteArrayOutputStream.reset()
-        quality -= 5
+        quality -= 20
         bitmap.compress(Bitmap.CompressFormat.JPEG, quality, byteArrayOutputStream)
     }
 

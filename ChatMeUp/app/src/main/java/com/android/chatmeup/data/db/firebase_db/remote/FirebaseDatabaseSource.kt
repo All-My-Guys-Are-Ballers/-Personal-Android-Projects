@@ -210,8 +210,9 @@ class FirebaseDataSource {
         refToPath("chats/${chat.info.id}").setValue(chat)
     }
 
-    fun pushNewMessage(chatID: String, message: Message) {
+    fun pushNewMessage(userID: String, chatID: String, message: Message) {
         refToPath("messages/$chatID/${message.messageID}").setValue(message)
+        refToPath("users/${userID}/newMessages/${message.messageID}").setValue(message)
     }
     //endregion
 
@@ -235,6 +236,10 @@ class FirebaseDataSource {
 
     fun removeMessages(messagesID: String) {
         refToPath("messages/$messagesID").setValue(null)
+    }
+
+    fun removeNewMessages(userID: String, messageID: String) {
+        refToPath("users/$userID/newMessages/$messageID").setValue(null)
     }
 
     //endregion
@@ -333,6 +338,11 @@ class FirebaseDataSource {
     fun <T> attachMessagesObserver(resultClassName: Class<T>, messagesID: String, refObs: FirebaseReferenceChildObserver, b: ((Result<T>) -> Unit)) {
         val listener = attachChildListenerToBlock(resultClassName, b)
         refObs.start(listener, refToPath("messages/$messagesID"))
+    }
+
+    fun <T> attachNewMessagesObserver(resultClassName: Class<T>, userID: String, refObs: FirebaseReferenceChildObserver, b: ((Result<T>) -> Unit)) {
+        val listener = attachChildListenerToBlock(resultClassName, b)
+        refObs.start(listener, refToPath("users/$userID/newMessages"))
     }
 
     fun <T> attachChatObserver(resultClassName: Class<T>, chatID: String, refObs: FirebaseReferenceValueObserver, b: ((Result<T>) -> Unit)) {
