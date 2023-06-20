@@ -21,7 +21,7 @@ fun convertFileToByteArray(context: Context, uri: Uri?): ByteArray? {
     val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
     val bitmap = BitmapFactory.decodeStream(inputStream)
     val byteArrayOutputStream = ByteArrayOutputStream()
-    bitmap.compress(Bitmap.CompressFormat.JPEG, 50, byteArrayOutputStream)
+    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream)
     var quality = 100
     while (byteArrayOutputStream.toByteArray().size > MAX_FILE_SIZE && quality > 0) {
         byteArrayOutputStream.reset()
@@ -41,10 +41,9 @@ fun convertFileToLowQualityThumbnail(context: Context, uri: Uri?): ByteArray? {
     var quality = 100
     while (byteArrayOutputStream.toByteArray().size > LOW_QUALITY_THUMBNAIL_SIZE && quality > 0) {
         byteArrayOutputStream.reset()
-        quality /= 2
+        quality /= 20
         bitmap.compress(Bitmap.CompressFormat.JPEG, quality, byteArrayOutputStream)
     }
-
     return byteArrayOutputStream.toByteArray()
 }
 
