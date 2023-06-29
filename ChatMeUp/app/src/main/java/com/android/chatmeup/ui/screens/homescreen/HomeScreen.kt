@@ -14,7 +14,6 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.ModalBottomSheetLayout
 import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.NotificationsActive
@@ -46,7 +45,6 @@ import com.android.chatmeup.data.db.room_db.entity.RoomContact
 import com.android.chatmeup.ui.screens.components.ProfilePicture
 import com.android.chatmeup.ui.screens.homescreen.components.BottomSheetScreen
 import com.android.chatmeup.ui.screens.homescreen.components.ChatListItem
-import com.android.chatmeup.ui.screens.homescreen.components.CmuSearchTextField
 import com.android.chatmeup.ui.screens.homescreen.components.HomeBottomBar
 import com.android.chatmeup.ui.screens.homescreen.components.HomeTopBar
 import com.android.chatmeup.ui.screens.homescreen.components.SheetLayout
@@ -207,25 +205,25 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize(),
             topBar = {
                 when (pagerState.currentPage) {
-                    0 ->
-                        HomeTopBar(
-                            Modifier,
-                            "Contacts",
-                            {
-                                IconButton(onClick = {
-                                    Firebase.auth.signOut()
-                                    onNavigateToLogin()
-                                }) {
-                                    Icon(
-                                        modifier = Modifier.size(20.dp),
-                                        imageVector = Icons.Filled.Add,
-                                        contentDescription = "icon.name",
-                                    )
-                                }
-                            }
-                        )
+//                    0 ->
+//                        HomeTopBar(
+//                            Modifier,
+//                            "Contacts",
+//                            {
+//                                IconButton(onClick = {
+//                                    Firebase.auth.signOut()
+//                                    onNavigateToLogin()
+//                                }) {
+//                                    Icon(
+//                                        modifier = Modifier.size(20.dp),
+//                                        imageVector = Icons.Filled.Add,
+//                                        contentDescription = "icon.name",
+//                                    )
+//                                }
+//                            }
+//                        )
 
-                    1 ->
+                    0 ->
                         HomeTopBar(
                             Modifier,
                             "Chats",
@@ -265,7 +263,7 @@ fun HomeScreen(
                             }
                         )
 
-                    2 ->
+                    1 ->
                         HomeTopBar(
                             Modifier,
                             "More",
@@ -283,11 +281,11 @@ fun HomeScreen(
             HorizontalPager(
                 modifier = Modifier.fillMaxSize(),
                 state = pagerState,
-                count = 3
+                count = 2
             ) { page ->
                 when (page) {
-                    0 -> Text(text = "Contacts")
-                    1 -> ChatsScreen(
+//                    0 -> Text(text = "Contacts")
+                    0 -> ChatsScreen(
                         modifier = Modifier.padding(it),
                         context = context,
                         searchTextValue = searchText,
@@ -311,7 +309,7 @@ fun HomeScreen(
                         onNavigateToChat = onNavigateToChat,
                     )
 
-                    2 -> MoreScreen(
+                    1 -> MoreScreen(
                         modifier = Modifier.padding(it),
                         context = context,
                         myContact = viewState.myContact,
@@ -347,11 +345,11 @@ fun ChatsScreen(
         color = MaterialTheme.colorScheme.background
     ) {
         Column() {
-            CmuSearchTextField(
-                searchTextValue = searchTextValue,
-                onSearchTextValueChanged = onSearchTextValueChanged,
-            )
-            Spacer(modifier = Modifier.height(10.dp))
+//            CmuSearchTextField(
+//                searchTextValue = searchTextValue,
+//                onSearchTextValueChanged = onSearchTextValueChanged,
+//            )
+//            Spacer(modifier = Modifier.height(10.dp))
             if(list.isNotEmpty()){
                 ChatList(
                     list = list,

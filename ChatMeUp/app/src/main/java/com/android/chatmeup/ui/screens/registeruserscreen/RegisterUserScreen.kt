@@ -12,6 +12,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -237,7 +238,7 @@ fun RegisterUserScreen(
                     .fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(50.dp))
+                Spacer(modifier = Modifier.height(20.dp))
                 Text(
                     text = "Create an account",
                     style = MaterialTheme.typography.headlineMedium,
@@ -288,10 +289,9 @@ fun RegisterUserScreen(
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(10.dp))
                 CmuInputTextFieldWithLabel(
-                    modifier = Modifier
-                        .height(85.dp),
+                    modifier = Modifier,
+                    paddingValues = PaddingValues(top = 10.dp, start = 16.dp, end = 16.dp),
                     label = "Display Name",
                     placeholder = "Enter your Display Name",
                     text = displayName,
@@ -301,8 +301,8 @@ fun RegisterUserScreen(
                     },
                 )
                 CmuInputTextFieldWithLabel(
-                    modifier = Modifier
-                        .height(85.dp),
+                    modifier = Modifier,
+                    paddingValues = PaddingValues(top = 10.dp, start = 16.dp, end = 16.dp),
                     label = "Email",
                     placeholder = "Enter your email address",
                     text = email,
@@ -313,8 +313,8 @@ fun RegisterUserScreen(
                     },
                 )
                 CmuInputTextFieldWithLabel(
-                    modifier = Modifier
-                        .height(85.dp),
+                    modifier = Modifier,
+                    paddingValues = PaddingValues(top = 10.dp, start = 16.dp, end = 16.dp),
                     label = "Password",
                     placeholder = "Enter your password",
                     keyboardType = KeyboardType.Password,
@@ -335,8 +335,8 @@ fun RegisterUserScreen(
                     visualTransformation = if (isPasswordVisible.value) VisualTransformation.None else PasswordVisualTransformation(),
                 )
                 CmuInputTextFieldWithLabel(
-                    modifier = Modifier
-                        .height(85.dp),
+                    modifier = Modifier,
+                    paddingValues = PaddingValues(top = 10.dp, start = 16.dp, end = 16.dp),
                     label = "Confirm Password",
                     placeholder = "Confirm",
                     keyboardType = KeyboardType.Password,
@@ -348,7 +348,7 @@ fun RegisterUserScreen(
                     },
                     visualTransformation = PasswordVisualTransformation(),
                 )
-                Spacer(modifier = Modifier.height(30.dp))
+                Spacer(modifier = Modifier.height(15.dp))
 
                 Column() {
                     Row(
@@ -360,7 +360,6 @@ fun RegisterUserScreen(
                     ) {
                         Text(
                             text = "By continuing you agree to our ",
-//                    textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.labelLarge,
                             modifier = Modifier
                         )
@@ -386,7 +385,7 @@ fun RegisterUserScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(30.dp))
+                Spacer(modifier = Modifier.height(15.dp))
 
                 CmuDarkButton(
                     label = "Sign Up",
@@ -402,16 +401,16 @@ fun RegisterUserScreen(
                                 duration = CmuToastDuration.SHORT
                             )
                         }
-//                    else if (!isStrongPassword.value) {
-//                        CmuToast.createFancyToast(
-//                            context = context,
-//                            activity = activity,
-//                            title = "Sign Up",
-//                            message = "Password too weak. Make sure to use special characters and numbers",
-//                            style = CmuToastStyle.ERROR,
-//                            duration = CmuToastDuration.LONG
-//                        )
-//                    }
+                        else if (!isStrongPassword.value) {
+                            CmuToast.createFancyToast(
+                                context = context,
+                                activity = activity,
+                                title = "Sign Up",
+                                message = "Password too weak. Make sure to use special characters and numbers",
+                                style = CmuToastStyle.ERROR,
+                                duration = CmuToastDuration.LONG
+                            )
+                        }
                         else if (password != confirmPassword) {
                             CmuToast.createFancyToast(
                                 context = context,
