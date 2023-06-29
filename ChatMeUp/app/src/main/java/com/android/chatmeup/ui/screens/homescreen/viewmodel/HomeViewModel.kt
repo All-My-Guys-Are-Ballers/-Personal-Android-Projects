@@ -7,25 +7,24 @@ import android.os.Looper
 import androidx.annotation.WorkerThread
 import androidx.lifecycle.*
 import androidx.lifecycle.viewmodel.CreationExtras
+import com.android.chatmeup.AppTaskManager
 import com.android.chatmeup.data.Result
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
-import com.android.chatmeup.data.db.firebase_db.entity.Chat
-import com.android.chatmeup.data.db.firebase_db.entity.Message
 import com.android.chatmeup.data.db.firebase_db.entity.User
-import com.android.chatmeup.data.db.firebase_db.entity.UserFriend
 import com.android.chatmeup.data.db.firebase_db.entity.UserInfo
 import com.android.chatmeup.data.db.firebase_db.entity.UserNotification
 import com.android.chatmeup.data.db.firebase_db.remote.FirebaseReferenceValueObserver
 import com.android.chatmeup.data.db.firebase_db.repository.AuthRepository
 import com.android.chatmeup.data.db.firebase_db.repository.DatabaseRepository
 import com.android.chatmeup.data.db.room_db.ChatMeUpDatabase
+import com.android.chatmeup.data.db.room_db.entity.RoomContact
 import com.android.chatmeup.data.model.ChatWithUserInfo
 import com.android.chatmeup.ui.DefaultViewModel
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
 import com.android.chatmeup.util.addNewItem
-import com.android.chatmeup.util.convertTwoUserIDs
+import com.android.chatmeup.util.clearDirectory
 import com.android.chatmeup.util.removeItem
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
@@ -36,8 +35,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -58,7 +59,8 @@ enum class AddContactEventState{
 class HomeViewModel @AssistedInject constructor(
     @Assisted("myUserId") var myUserId: String,
     private val cmuDataStoreRepository: CmuDataStoreRepository,
-    private val chatMeUpDatabase: ChatMeUpDatabase
+    private val chatMeUpDatabase: ChatMeUpDatabase,
+    val appTaskManager: AppTaskManager,
 ): DefaultViewModel() {
     private val tag = "HomeViewModel"
     val homeEventState = MutableStateFlow(HomeEventState.INIT)
@@ -73,32 +75,28 @@ class HomeViewModel @AssistedInject constructor(
     private val _updatedUserNotification = MutableLiveData<UserInfo>()
     private val _updatedChatWithUserInfo = MutableLiveData<ChatWithUserInfo>()
 
-    val myUpdatedInfo = MutableLiveData<UserInfo>()
-
-
+    private val _myContact = chatMeUpDatabase.contactDao.getContactFlow(myUserId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), RoomContact(""))
+    private val _chatsList = chatMeUpDatabase.chatDao.getChatsOrderedByTime()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), listOf())
     private val _viewState = MutableStateFlow(HomeViewState())
-    val viewState = _viewState.asStateFlow()
 
 
     val notificationListWithUserInfo = MediatorLiveData<MutableList<UserInfo>>()
     val ioScope = CoroutineScope(Dispatchers.IO + Job())
 
+    val viewState = combine(_viewState, _myContact, _chatsList){viewState, myContact, chatsList->
+        viewState.copy(
+            myContact = myContact,
+            chatsList = chatsList
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeViewState())
+
     init {
         myUserId = Firebase.auth.currentUser?.uid ?: ""
-//        chatsList.addSource(_updatedChatWithUserInfo) { newChat ->
-//            val chat = chatsList.value?.find { it.mChat.info.id == newChat.mChat.info.id }
-//            if (chat == null) {
-//                chatsList.addNewItem(newChat)
-//            } else {
-//                chatsList.updateItemAt(newChat, chatsList.value!!.indexOf(chat))
-//            }
-//        }
-        getChatItems()
         this.notificationListWithUserInfo.addSource(_updatedUserNotification) { newNotification ->
             this.notificationListWithUserInfo.addNewItem(newNotification)
         }
-        loadAndObserveMyInfo()
-//        setupChats()
         loadAndObserveNotifications()
     }
 
@@ -107,9 +105,6 @@ class HomeViewModel @AssistedInject constructor(
         firebaseReferenceObserverList.forEach { it.clear() }
     }
 
-//    private fun setupChats() {
-//        loadAndObserveFriends()
-//    }
 
     private fun loadUserID() = viewModelScope.launch {
         cmuDataStoreRepository.getUserId().collect{
@@ -117,23 +112,25 @@ class HomeViewModel @AssistedInject constructor(
         }
     }
 
-    private fun getChatItems(){
-        viewModelScope.launch {
-            chatMeUpDatabase.chatDao.getChatsOrderedByTime().collectLatest {_chatsList ->
-                _viewState.value = _viewState.value.copy(
-                    chatsList = _chatsList
-                )
-            }
-        }
-    }
-
-    private fun loadAndObserveMyInfo() {
-        val observer = FirebaseReferenceValueObserver()
-        firebaseReferenceObserverList.add(observer)
-        dbRepository.loadAndObserveUserInfo(myUserId, observer) { result: Result<UserInfo> ->
-            onResult(myUpdatedInfo, result)
-        }
-    }
+//    private fun getChatItems(){
+//        viewModelScope.launch {
+//            chatMeUpDatabase.chatDao.getChatsOrderedByTime().collectLatest {_chatsList ->
+//                _viewState.value = _viewState.value.copy(
+//                    chatsList = _chatsList
+//                )
+//            }
+//        }
+//    }
+//
+//    private fun loadAndObserveMyInfo() {
+////        viewModelScope.launch {
+////            chatMeUpDatabase.contactDao.getContactFlow(myUserId).collectLatest {_myContact ->
+////                _viewState.value = _viewState.value.copy(
+////                    myContact = _myContact
+////                )
+////            }
+////        }
+//    }
 
     private fun updateNotification(otherUserInfo: UserInfo, removeOnly: Boolean) {
         val userNotification = this.notificationListWithUserInfo.value?.find {
@@ -142,12 +139,9 @@ class HomeViewModel @AssistedInject constructor(
 
         if (userNotification != null) {
             if (!removeOnly) {
-                dbRepository.updateNewFriend(UserFriend(myUserId), UserFriend(otherUserInfo.id))
-                val newChat = Chat().apply {
-                    info.id = convertTwoUserIDs(myUserId, otherUserInfo.id)
-                    lastMessage = Message(senderID = myUserId, seen = false, text = "Say hello!")
-                }
-                dbRepository.updateNewChat(newChat)
+               appTaskManager.addTaskToQueue(AppTaskManager.Task.AddNewContact(
+                   userNotification.id
+               ))
             }
             dbRepository.removeNotification(myUserId, otherUserInfo.id)
             dbRepository.removeSentRequest(otherUserInfo.id, myUserId)
@@ -165,66 +159,11 @@ class HomeViewModel @AssistedInject constructor(
         updateNotification(userInfo, true)
     }
 
-//    private fun loadUserInfo(userFriend: UserFriend) {
-//        dbRepository.loadUserInfo(userFriend.userID) { result: Result<UserInfo> ->
-//            onResult(null, result)
-//            if (result is Result.Success) result.data?.let {
-//                loadAndObserveChat(it)
-//            }
-//        }
-//    }
-
     private fun loadUserInfo(userNotification: UserNotification) {
         dbRepository.loadUserInfo(userNotification.userID) { result: Result<UserInfo> ->
             onResult(_updatedUserNotification, result)
         }
     }
-
-//    private fun loadAndObserveChat(userInfo: UserInfo) {
-//        if(chatsList.value?.find{it.mUserInfo == userInfo} == null){
-//            val observer = FirebaseReferenceValueObserver()
-//            firebaseReferenceObserverList.add(observer)
-//            dbRepository.loadAndObserveChat(
-//                convertTwoUserIDs(myUserId, userInfo.id),
-//                observer
-//            ) { result: Result<Chat> ->
-//                if (result is Result.Success) {
-//                    _updatedChatWithUserInfo.value =
-//                        result.data?.let { ChatWithUserInfo(it, userInfo) }
-//                    result.data?.let { loadAndObserveUserInfo(it, userInfo) }
-////                    Timber.tag(tag).d("${userInfo.displayName} has an updated message ${result.data?.lastMessage?.text ?: ""}")
-//                    // update database
-//
-//                } else if (result is Result.Error) {
-//                    chatsList.value?.let {
-//                        val newList = mutableListOf<ChatWithUserInfo>().apply { addAll(it) }
-//                        newList.removeIf { it2 -> result.msg.toString().contains(it2.mUserInfo.id) }
-//                        chatsList.value = newList
-//                    }
-//                }
-//            }
-//        }
-//    }
-
-//    private fun loadAndObserveUserInfo(chat: Chat, otherUserInfo: UserInfo){
-//        val observer = FirebaseReferenceValueObserver()
-//        firebaseReferenceObserverList.add(observer)
-//        dbRepository.loadAndObserveUserInfo(
-//            otherUserInfo.id,
-//            observer
-//        ) { result: Result<UserInfo> ->
-//            if (result is Result.Success) {
-//                _updatedChatWithUserInfo.value =
-//                    result.data?.let { ChatWithUserInfo(chat, it) }
-//            } else if (result is Result.Error) {
-//                chatsList.value?.let {
-//                    val newList = mutableListOf<ChatWithUserInfo>().apply { addAll(it) }
-//                    newList.removeIf { it2 -> result.msg.toString().contains(it2.mUserInfo.id) }
-//                    chatsList.value = newList
-//                }
-//            }
-//        }
-//    }
 
     private fun loadAndObserveNotifications(){
         Timber.tag(tag).d("uidnotifica is $myUserId")
@@ -236,31 +175,6 @@ class HomeViewModel @AssistedInject constructor(
             }
         }
     }
-
-//    private fun loadAndObserveFriends(){
-//        Timber.tag(tag).d("uidnotifica is $myUserId")
-//        val observer = FirebaseReferenceValueObserver()
-//        firebaseReferenceObserverList.add(observer)
-//        dbRepository.loadAndObserveFriends(myUserId, observer){result ->
-//            if (result is Result.Success) {
-//                result.data?.forEach { loadUserInfo(it) }
-//            }
-//        }
-//    }
-
-//    fun onEventTriggered(activity: Activity, events: HomeEvents){
-//        when(events){
-//            HomeEvents.ChatListEvent -> {
-//                homeEventState.value = HomeEventState.CHATS
-//            }
-//            HomeEvents.ContactListEvent -> {
-//                homeEventState.value = HomeEventState.CONTACTS
-//            }
-//            HomeEvents.MoreEvent -> {
-//                homeEventState.value = HomeEventState.MORE
-//            }
-//        }
-//    }
 
     fun onAddContactEventTriggered(
         event: AddContactEvents,
@@ -315,35 +229,6 @@ class HomeViewModel @AssistedInject constructor(
     }
 
 
-//    private fun loadAndObserveUserNotifications(observer: FirebaseReferenceValueObserver){
-//        val ioScope = CoroutineScope(Dispatchers.IO + Job())
-//        Firebase.auth.uid?.let{myUserId ->
-//            dbRepository.loadAndObserveUserNotifications(
-//                myUserId,
-//                observer
-//            ) { result ->
-//                when (result) {
-//                    is Result.Error -> {
-//                        Timber.tag(tag).e("Error loading Message")
-//                    }
-//
-//                    Result.Loading -> {}
-//                    is Result.Progress -> {}
-//                    is Result.Success -> {
-//                        result.data?.let {userNotification ->
-//                            {
-//                                if (chatMeUpDatabase.contactDao.contactExists(userNotification.))
-//                                //Delete from Firebase
-//                                    dbRepository.removeNewMessages(myUserId, it.messageID)
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//    }
-
-
     @WorkerThread
     private fun sendFriendRequest(
         context: Context,
@@ -362,7 +247,6 @@ class HomeViewModel @AssistedInject constructor(
                 }
                 if (uid.isNotBlank()){
                     Timber.tag(tag).d("This is UID: $uid")
-//                    dbRepository.updateNewSentRequest(myUserId.value!!, UserRequest(uid))
                     dbRepository.updateNewNotification(uid, UserNotification(myUserId))
                     onAddContactEventTriggered(
                         AddContactEvents.Success,
@@ -390,12 +274,22 @@ class HomeViewModel @AssistedInject constructor(
         }
     }
 
-    fun logout(){
+    fun logout(context: Context){
         authRepository.logoutUser()
+        ioScope.launch {
+            chatMeUpDatabase.messageDao.deleteTable()
+            chatMeUpDatabase.chatDao.deleteTable()
+            chatMeUpDatabase.contactDao.deleteTable()
+        }
+        clearDirectory(context.filesDir)
+        clearDirectory(context.cacheDir)
+        clearDirectory(context.codeCacheDir)
+        clearDirectory(context.dataDir)
     }
 
     data class HomeViewState(
-        val chatsList: List<com.android.chatmeup.data.db.room_db.entity.Chat> = emptyList()
+        val myContact: RoomContact = RoomContact(""),
+        val chatsList: List<com.android.chatmeup.data.db.room_db.entity.RoomChat> = emptyList()
     )
     sealed class HomeEvents(){
         object ChatListEvent: HomeEvents()

@@ -7,6 +7,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.android.chatmeup.AppTaskManager
 import com.android.chatmeup.data.db.room_db.ChatMeUpDatabase
 import dagger.Module
 import dagger.Provides
@@ -55,5 +56,13 @@ object DataStoreModule {
             name = "ChatMeUp.db"
         ).addMigrations(MIGRATION_1_2).
         build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideAppTaskManager(
+        chatMeUpDatabase: ChatMeUpDatabase,
+    ): AppTaskManager {
+        return AppTaskManager(chatMeUpDatabase)
     }
 }

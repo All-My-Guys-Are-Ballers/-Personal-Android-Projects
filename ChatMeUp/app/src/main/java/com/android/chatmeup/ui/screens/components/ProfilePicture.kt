@@ -21,28 +21,36 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
 import com.android.chatmeup.ui.theme.cmuLightGrey
 import com.android.chatmeup.ui.theme.neutral_disabled
 import com.android.chatmeup.ui.theme.success_green
 import com.google.accompanist.placeholder.PlaceholderHighlight
 import com.google.accompanist.placeholder.placeholder
 import com.google.accompanist.placeholder.shimmer
-import java.io.File
+import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfilePicture(
     modifier: Modifier = Modifier,
-    imageFile: Any,
+    imageObj: Any,
     isOnline: Boolean = false,
     size: Dp = 60.dp,
     shape: Shape = RoundedCornerShape(30),
 ){
-    val painter = rememberAsyncImagePainter(imageFile)
+    val painter = rememberAsyncImagePainter(
+        model = ImageRequest.Builder(LocalContext.current)
+            .data(imageObj)
+            .size(coil.size.Size.ORIGINAL) // Set the target size to load the image at.
+            .build()
+    )
+
     BadgedBox(
         modifier = modifier
             .size(size)
@@ -75,7 +83,8 @@ fun ProfilePicture(
             }
         },
     ){
-        if(imageFile is String && imageFile.isNotEmpty() || imageFile is File && imageFile.exists()){
+        Timber.tag("ProfilePicture").d("painter.state is ${painter.state}")
+        if(painter.state is AsyncImagePainter.State.Success){
             Image(
                 modifier = Modifier
                     .clip(shape)

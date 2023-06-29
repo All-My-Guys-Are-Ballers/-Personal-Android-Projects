@@ -20,26 +20,21 @@ class DatabaseRepository {
     private val firebaseDatabaseService = FirebaseDataSource()
 
     //region Update
-    fun updateUserStatus(userID: String, status: String, b:(Result<Nothing>) -> Unit) {
+    fun updateUserStatus(userID: String, status: String) {
         firebaseDatabaseService.updateUserStatus(userID, status)
-            .addOnSuccessListener { b.invoke(Result.Success()) }
-            .addOnFailureListener{ b.invoke(Result.Error(msg = it.message))}
-            .addOnCanceledListener { b.invoke(Result.Error()) }
     }
 
     fun updateOnlineStatus(userID: String, status: Boolean){
         firebaseDatabaseService.updateOnlineStatus(userID, status)
     }
 
+
     fun updateFCMToken(userID: String, token: String){
         firebaseDatabaseService.updateFCMToken(userID, token)
     }
 
-    fun updateDisplayName(userID: String, displayName: String, b:(Result<Nothing>) -> Unit){
+    fun updateDisplayName(userID: String, displayName: String){
         firebaseDatabaseService.updateDisplayName(userID, displayName)
-            .addOnSuccessListener { b.invoke(Result.Success()) }
-            .addOnFailureListener{ b.invoke(Result.Error(msg = it.message))}
-            .addOnCanceledListener { b.invoke(Result.Error()) }
     }
 
     fun updateNewMessage(userID: String, chatID: String, message: Message) {
@@ -103,6 +98,10 @@ class DatabaseRepository {
 
     fun removeMessages(messagesID: String){
         firebaseDatabaseService.removeMessages(messagesID)
+    }
+
+    fun removeMessage(chatID: String, messageID: String){
+        firebaseDatabaseService.removeMessage(chatID, messageID)
     }
 
     fun removeNewMessages(userID: String, messageID: String){

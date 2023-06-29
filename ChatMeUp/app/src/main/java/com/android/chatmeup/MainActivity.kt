@@ -16,9 +16,13 @@ import androidx.core.view.updatePadding
 import androidx.navigation.compose.rememberNavController
 import com.android.chatmeup.data.Result
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
+import com.android.chatmeup.data.db.firebase_db.entity.UserFriend
 import com.android.chatmeup.data.db.firebase_db.remote.FirebaseReferenceChildObserver
+import com.android.chatmeup.data.db.firebase_db.remote.FirebaseReferenceValueObserver
 import com.android.chatmeup.data.db.firebase_db.repository.DatabaseRepository
+import com.android.chatmeup.data.db.firebase_db.repository.StorageRepository
 import com.android.chatmeup.data.db.room_db.ChatMeUpDatabase
+import com.android.chatmeup.data.db.room_db.data.MessageType
 import com.android.chatmeup.ui.CmuApp
 import com.android.chatmeup.ui.screens.chat.viewmodel.ChatViewModel
 import com.android.chatmeup.ui.screens.homescreen.viewmodel.HomeViewModel
@@ -38,6 +42,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.LinkedList
+import java.util.Queue
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -45,7 +51,12 @@ class MainActivity : ComponentActivity() {
     private val tag = MainActivity::class.java.simpleName
     private lateinit var chatMeUpApp: CmuApplication
     private val dbRepository = DatabaseRepository()
-    private val fbReferenceChildObserver = FirebaseReferenceChildObserver()
+    private val storageRepository = StorageRepository()
+    private val newMessagesFbReferenceChildObserver = FirebaseReferenceChildObserver()
+    private val newFriendsFbReferenceValueObserver = FirebaseReferenceValueObserver()
+    private var friendsUserInfoReferenceValueObserverList: MutableList<FirebaseReferenceValueObserver> = mutableListOf()
+    private val ioScope = CoroutineScope(Dispatchers.IO + Job())
+    private val taskList: Queue<Triple<Any, Boolean, String>> = LinkedList()
 
     @Inject
     lateinit var cmuDataStoreRepository: CmuDataStoreRepository
@@ -53,23 +64,25 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var chatMeUpDatabase: ChatMeUpDatabase
 
+    @Inject
+    lateinit var appTaskManager: AppTaskManager
+
     @EntryPoint
     @InstallIn(ActivityComponent::class)
     interface ViewModelFactoryProvider {
         fun homeViewModelFactory(): HomeViewModel.Factory
         fun chatViewModelFactory(): ChatViewModel.Factory
-
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
 //        WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
-
         chatMeUpApp = applicationContext as CmuApplication
 
         Firebase.auth.currentUser?.let {  dbRepository.updateOnlineStatus(it.uid, true)}
-        loadAndObserveAllNewMessages(fbReferenceChildObserver)
+        if(!newMessagesFbReferenceChildObserver.isObserving())loadAndObserveAllNewMessages(newMessagesFbReferenceChildObserver)
+        loadAndObserveFriendsUserInfo()
 
         setContent {
             val systemUiController = rememberSystemUiController()
@@ -88,15 +101,14 @@ class MainActivity : ComponentActivity() {
             }
             val navController = rememberNavController()
             ChatMeUpTheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     CmuApp(
-                        newMessagesObserver = fbReferenceChildObserver,
                         chatMeUpApp = chatMeUpApp,
                         startObserving = {
-                            loadAndObserveAllNewMessages(fbReferenceChildObserver)
+                            if(!newMessagesFbReferenceChildObserver.isObserving())loadAndObserveAllNewMessages(newMessagesFbReferenceChildObserver)
+                            if(newFriendsFbReferenceValueObserver.isObserving())loadAndObserveNewFriends(newFriendsFbReferenceValueObserver)
                         }
                     )
                 }
@@ -112,7 +124,7 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         chatMeUpApp.setCurrentActivity(this)
-        Firebase.auth.currentUser?.let {  dbRepository.updateOnlineStatus(it.uid, true)}
+        Firebase.auth.currentUser?.let {  dbRepository.updateOnlineStatus(it.uid, false)}
     }
 
 //    override fun onStart() {
@@ -146,17 +158,111 @@ class MainActivity : ComponentActivity() {
                                 //update message table
                                 chatMeUpDatabase.messageDao.upsertMessage(message)
                                 //update chat LastMessage
-                                val chat = chatMeUpDatabase.chatDao.getChat(message.chatID).apply {
-                                    no_of_unread_messages += 1
-                                    lastMessageText = message.messageText
-                                    lastMessageTime = message.messageTime
-                                    messageType = enumValueOf(message.messageType)
+                                if(chatMeUpDatabase.chatDao.chatExists(message.chatID)){
+                                    val chat =
+                                        chatMeUpDatabase.chatDao.getChat(message.chatID).apply {
+                                            no_of_unread_messages += 1
+                                            lastMessageText = message.messageText
+                                            lastMessageTime = message.messageTime
+                                            messageType = enumValueOf(message.messageType)
+                                            lastMessageSenderID = message.senderID
+                                        }
+                                    chatMeUpDatabase.chatDao.upsertChat(chat)
                                 }
-                                chatMeUpDatabase.chatDao.upsertChat(chat)
-
                             }
                             //Delete from Firebase
                             dbRepository.removeNewMessages(myUserId, it.messageID)
+
+                            //download Thumbnail
+                            if(message.messageType == MessageType.TEXT_IMAGE.toString()){
+                                val localFilePath =
+                                    "${message.chatID}/${message.messageId}_thumbnail.png"
+                                message.serverThumbnailPath?.let { it1 ->
+                                    storageRepository.downloadChatThumbnail(
+                                        this.applicationContext,
+                                        it1,
+                                        localFilePath
+                                    ) { thumbnailResult ->
+                                        when (thumbnailResult) {
+                                            is Result.Error -> {}
+                                            Result.Loading -> {}
+                                            is Result.Progress -> {}
+                                            is Result.Success -> {
+                                                ioScope.launch{
+                                                    val message1 =
+                                                        chatMeUpDatabase.messageDao.getMessage(message.messageId)
+                                                            .apply {
+                                                                this.localThumbnailPath = localFilePath
+                                                            }
+                                                    chatMeUpDatabase.messageDao.upsertMessage(message1)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun loadAndObserveNewFriends(observer: FirebaseReferenceValueObserver){
+        Firebase.auth.uid?.let { myUserId ->
+            dbRepository.loadAndObserveFriends(myUserId, observer) { result ->
+                when (result) {
+                    is Result.Error -> {
+                        Timber.tag(tag).d("Unable to check and update Friends List")
+                    }
+                    Result.Loading -> {}
+                    is Result.Progress -> {}
+                    is Result.Success -> {
+                        result.data?.let { contactList ->
+                            ioScope.launch{
+                                for (contact in contactList) {
+                                    if (!chatMeUpDatabase.contactDao.contactExists(contact.userID)) {
+                                        appTaskManager.addTaskToQueue(AppTaskManager.Task.CreateNewContactFromUserID(this@MainActivity,contact.userID))
+                                        appTaskManager.addTaskToQueue(AppTaskManager.Task.CreateNewChatFromUserID(this@MainActivity, contact.userID))
+                                    }
+                                }
+                                val contacts = chatMeUpDatabase.contactDao.getContacts()
+                                for (contact in contacts) {
+                                    if (!contactList.contains(UserFriend(contact.userID)) && contact.userID != myUserId) {
+                                        appTaskManager.addTaskToQueue(AppTaskManager.Task.DeleteContactUsingUserID(contact.userID))
+                                        appTaskManager.addTaskToQueue(AppTaskManager.Task.DeleteChatUsingUserID(contact.userID))
+                                    }
+                                }
+                                loadAndObserveFriendsUserInfo()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun loadAndObserveFriendsUserInfo(){
+        ioScope.launch{
+            friendsUserInfoReferenceValueObserverList = mutableListOf()
+            val contacts = chatMeUpDatabase.contactDao.getContacts()
+            for (contact in contacts) {
+                val observer = FirebaseReferenceValueObserver()
+                friendsUserInfoReferenceValueObserverList.add(observer)
+                dbRepository.loadAndObserveUserInfo(contact.userID, observer) { result ->
+                    when (result) {
+                        is Result.Error -> {}
+                        Result.Loading -> {}
+                        is Result.Progress -> {}
+                        is Result.Success -> {
+                            result.data?.let {
+                                appTaskManager.addTaskToQueue(
+                                    AppTaskManager.Task.UpdateContactUsingUserInfo(
+                                        this@MainActivity,
+                                        it
+                                    )
+                                )
+                            }
                         }
                     }
                 }

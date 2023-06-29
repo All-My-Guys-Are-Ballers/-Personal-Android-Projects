@@ -56,17 +56,24 @@ class FirebaseReferenceConnectedObserver {
 class FirebaseReferenceValueObserver {
     private var valueEventListener: ValueEventListener? = null
     private var dbRef: DatabaseReference? = null
+    private var isObserving = false
 
     fun start(valueEventListener: ValueEventListener, reference: DatabaseReference) {
+        isObserving = true
         reference.addValueEventListener(valueEventListener)
         this.valueEventListener = valueEventListener
         this.dbRef = reference
+    }
+
+    fun isObserving(): Boolean{
+        return isObserving
     }
 
     fun clear() {
         valueEventListener?.let { dbRef?.removeEventListener(it) }
         valueEventListener = null
         dbRef = null
+        isObserving = false
     }
 }
 
@@ -236,6 +243,10 @@ class FirebaseDataSource {
 
     fun removeMessages(messagesID: String) {
         refToPath("messages/$messagesID").setValue(null)
+    }
+
+    fun removeMessage(chatID: String, messageID: String) {
+        refToPath("messages/$chatID/$messageID").setValue(null)
     }
 
     fun removeNewMessages(userID: String, messageID: String) {

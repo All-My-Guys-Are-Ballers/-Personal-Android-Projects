@@ -2,6 +2,8 @@ package com.android.chatmeup
 
 import android.app.Activity
 import android.app.Application
+import com.google.firebase.database.ktx.database
+import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 
@@ -16,6 +18,8 @@ class CmuApplication: Application() {
         if(BuildConfig.DEBUG){
             Timber.plant(Timber.DebugTree())
         }
+
+        Firebase.database.setPersistenceEnabled(true)
 
         Timber.d("Application Started")
 

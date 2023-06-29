@@ -5,12 +5,12 @@ import androidx.room.RoomDatabase
 import com.android.chatmeup.data.db.room_db.dao.ChatDao
 import com.android.chatmeup.data.db.room_db.dao.ContactDao
 import com.android.chatmeup.data.db.room_db.dao.MessageDao
-import com.android.chatmeup.data.db.room_db.entity.Chat
-import com.android.chatmeup.data.db.room_db.entity.Contact
-import com.android.chatmeup.data.db.room_db.entity.Message
+import com.android.chatmeup.data.db.room_db.entity.RoomChat
+import com.android.chatmeup.data.db.room_db.entity.RoomContact
+import com.android.chatmeup.data.db.room_db.entity.RoomMessage
 
 @Database(
-    entities = [Chat::class, Message::class, Contact::class],
+    entities = [RoomChat::class, RoomMessage::class, RoomContact::class],
     version = 2
 )
 abstract class ChatMeUpDatabase: RoomDatabase() {

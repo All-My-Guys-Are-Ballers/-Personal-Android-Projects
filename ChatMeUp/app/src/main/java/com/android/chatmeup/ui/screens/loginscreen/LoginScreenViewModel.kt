@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
+import com.android.chatmeup.AppTaskManager
 import com.android.chatmeup.data.Result
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
 import com.android.chatmeup.data.db.firebase_db.repository.AuthRepository
@@ -16,9 +17,10 @@ import com.android.chatmeup.data.db.firebase_db.repository.DatabaseRepository
 import com.android.chatmeup.data.db.firebase_db.repository.StorageRepository
 import com.android.chatmeup.data.db.room_db.ChatMeUpDatabase
 import com.android.chatmeup.data.db.room_db.data.MessageStatus
-import com.android.chatmeup.data.db.room_db.entity.Chat
-import com.android.chatmeup.data.db.room_db.entity.Contact
-import com.android.chatmeup.data.db.room_db.entity.Message
+import com.android.chatmeup.data.db.room_db.data.MessageType
+import com.android.chatmeup.data.db.room_db.entity.RoomChat
+import com.android.chatmeup.data.db.room_db.entity.RoomContact
+import com.android.chatmeup.data.db.room_db.entity.RoomMessage
 import com.android.chatmeup.ui.DefaultViewModel
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
@@ -34,6 +36,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -54,6 +57,7 @@ enum class LoginStatus{
 class LoginScreenViewModel @Inject constructor(
     private val cmuDataStoreRepository: CmuDataStoreRepository,
     private val chatMeUpDatabase: ChatMeUpDatabase,
+    private val appTaskManager: AppTaskManager,
 ) : DefaultViewModel() {
     private val tag: String = "LoginScreenViewModel"
 
@@ -152,7 +156,7 @@ class LoginScreenViewModel @Inject constructor(
         cmuDataStoreRepository.saveUserId(value)
     }
 
-    private fun loadMessages(chatID: String){
+    private fun loadMessages(context: Context, chatID: String){
         dbRepository.loadMessages(chatID){result ->
             when(result){
                 is Result.Error -> {
@@ -164,19 +168,51 @@ class LoginScreenViewModel @Inject constructor(
                 is Result.Success -> {
                     result.data?.let{messageList ->
                         messageList.forEach{message ->
-                            ioScope.launch{
-                                chatMeUpDatabase.messageDao.upsertMessage(
-                                    Message(
-                                        messageId = chatID + message.messageID,
-                                        chatID = chatID,
-                                        messageText = message.text,
-                                        messageTime = message.epochTimeMs,
-                                        senderID = message.senderID,
-                                        messageStatus = MessageStatus.UNSENT,
-                                        lowQualityThumbnail = message.lowQualityThumbnail.toByteArray(),
-                                        messageType = message.messageType
+                            if(message.messageType == MessageType.TEXT_IMAGE.toString()){
+                                val localFilePath = "${chatID}/${chatID + message.messageID}_thumbnail.png"
+                                storageRepository.downloadChatThumbnail(context, message.thumbnailUrl, localFilePath){thumbnailResult ->
+                                    when(thumbnailResult){
+                                        is Result.Error -> {}
+                                        Result.Loading -> {}
+                                        is Result.Progress -> {}
+                                        is Result.Success -> {
+                                            ioScope.launch{
+                                                chatMeUpDatabase.messageDao.upsertMessage(
+                                                    RoomMessage(
+                                                        messageId = chatID + message.messageID,
+                                                        chatID = chatID,
+                                                        messageText = message.text,
+                                                        messageTime = message.epochTimeMs,
+                                                        senderID = message.senderID,
+                                                        messageStatus = MessageStatus.UNSENT,
+                                                        messageType = message.messageType,
+                                                        serverFilePath = message.imageUrl,
+                                                        timeStamp = message.messageID,
+                                                        localThumbnailPath = localFilePath,
+                                                        serverThumbnailPath = message.thumbnailUrl
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            else {
+                                ioScope.launch {
+                                    chatMeUpDatabase.messageDao.upsertMessage(
+                                        RoomMessage(
+                                            messageId = chatID + message.messageID,
+                                            chatID = chatID,
+                                            messageText = message.text,
+                                            messageTime = message.epochTimeMs,
+                                            senderID = message.senderID,
+                                            messageStatus = MessageStatus.UNSENT,
+                                            messageType = message.messageType,
+                                            serverFilePath = message.imageUrl,
+                                            timeStamp = message.messageID
+                                        )
                                     )
-                                )
+                                }
                             }
                         }
                     }
@@ -189,7 +225,7 @@ class LoginScreenViewModel @Inject constructor(
         }
     }
 
-    private fun loadChat(otherUserID: String, chat: Chat?) {
+    private fun loadChat(context: Context, otherUserID: String, roomChat: RoomChat?) {
         try {
             dbRepository.loadChat(
                 convertTwoUserIDs(
@@ -205,31 +241,31 @@ class LoginScreenViewModel @Inject constructor(
                         //do nothing for now
                     }
                     is Result.Success -> {
-                        chatResult.data?.let{chatResult ->
+                        chatResult.data?.let{chatResult1 ->
                             ioScope.launch{
-                                chat?.copy(
-                                    id = chatResult.info.id,
-                                    no_of_unread_messages = chatResult.info.no_of_unread_messages,
-                                    lastMessageTime = chatResult.lastMessage.epochTimeMs,
-                                    lastMessageText = chatResult.lastMessage.text,
-                                    messageType = enumValueOf(chatResult.lastMessage.messageType),
-                                    lastMessageSenderID = chatResult.lastMessage.senderID
+                                roomChat?.copy(
+                                    id = chatResult1.info.id,
+                                    no_of_unread_messages = chatResult1.info.no_of_unread_messages,
+                                    lastMessageTime = chatResult1.lastMessage.epochTimeMs,
+                                    lastMessageText = chatResult1.lastMessage.text,
+                                    messageType = enumValueOf(chatResult1.lastMessage.messageType),
+                                    lastMessageSenderID = chatResult1.lastMessage.senderID
                                 )?.let {
                                     chatMeUpDatabase.chatDao.upsertChat(
                                         it
                                     )
-                                }?: chatMeUpDatabase.chatDao.upsertChat(Chat(
-                                        id = chatResult.info.id,
-                                        no_of_unread_messages = chatResult.info.no_of_unread_messages,
-                                        lastMessageTime = chatResult.lastMessage.epochTimeMs,
-                                        lastMessageText = chatResult.lastMessage.text,
-                                        messageType = enumValueOf(chatResult.lastMessage.messageType),
-                                        lastMessageSenderID = chatResult.lastMessage.senderID,
+                                }?: chatMeUpDatabase.chatDao.upsertChat(RoomChat(
+                                        id = chatResult1.info.id,
+                                        no_of_unread_messages = chatResult1.info.no_of_unread_messages,
+                                        lastMessageTime = chatResult1.lastMessage.epochTimeMs,
+                                        lastMessageText = chatResult1.lastMessage.text,
+                                        messageType = enumValueOf(chatResult1.lastMessage.messageType),
+                                        lastMessageSenderID = chatResult1.lastMessage.senderID,
                                     otherUserId = otherUserID
                                     )
                                 )
                             }
-                            loadMessages(chatID = chatResult.info.id)
+                            loadMessages(context = context, chatID = chatResult1.info.id)
                         } ?: {
                             Timber.tag(tag).e("Unable to load Chat for ${
                                 convertTwoUserIDs(
@@ -258,99 +294,61 @@ class LoginScreenViewModel @Inject constructor(
         activity: Activity?,
         onDataLoaded: () -> Unit
     ){
-        Firebase.auth.currentUser?.uid?.let {
-            dbRepository.loadUserInfo(it){result ->
-                when(result){
-                    is Result.Error -> {
-                        Handler(Looper.getMainLooper()).postDelayed({
-                            CmuToast.createFancyToast(
-                                context,
-                                activity,
-                                "Download Failed",
-                                "Unable to load User Info",
-                                CmuToastStyle.ERROR,
-                                CmuToastDuration.SHORT
-                            )
-                        }, 200)
-                    }
-                    Result.Loading -> {}
-                    is Result.Progress -> {}
-                    is Result.Success -> {
-                        result.data?.let { it1 ->
-                            loadProfileImage(
-                                context,
-                                activity,
-                                it1.id,
-                                it1.displayName,
-                                it1.aboutStr,
-                                isMine = true,
-                                email = it1.email,
-                            )
+        val myUserId = Firebase.auth.uid
+        var allTasksAdded = false
+        if(myUserId == null){
+            Handler(Looper.getMainLooper()).postDelayed({
+                CmuToast.createFancyToast(
+                    context,
+                    activity,
+                    "Login Failed",
+                    "Try to Login again",
+                    CmuToastStyle.ERROR,
+                    CmuToastDuration.SHORT
+                )
+            }, 200)
+            return
+        }
+        appTaskManager.addTaskToQueue(AppTaskManager.Task.CreateNewContactFromUserID(context, myUserId))
+
+        dbRepository.loadFriends(myUserId){result ->
+            when(result){
+                is Result.Success -> {
+                    result.data?.let {contactList ->
+                        contactList.forEach { contact ->
+                            appTaskManager.addTaskToQueue(AppTaskManager.Task.CreateNewContactFromUserID(context, contact.userID))
+                            appTaskManager.addTaskToQueue(AppTaskManager.Task.CreateNewChatFromUserID(context, contact.userID))
+                            appTaskManager.addTaskToQueue(AppTaskManager.Task.LoadMessagesUsingChatID(context, convertTwoUserIDs(myUserId, contact.userID)))
                         }
+                        allTasksAdded = true
                     }
+                }
+                is Result.Error -> {
+                    onEventTriggered(
+                        event = LoginEvents.ErrorEvent(activity, context, result.msg)
+                    )
+                }
+                Result.Loading -> {
+                    loginEventStatus.value = LoginStatus.LOADING_DATA
+                    _loadingMsg.value = "Loading Chats"
+                }
+
+                is Result.Progress -> {
+                    //do nothing
                 }
             }
         }
-
-        myUserID?.let {
-            dbRepository.loadFriends(it){result ->
-                when(result){
-                    is Result.Success -> {
-                        result.data?.let {contactList ->
-                            contactList.forEach { contact ->
-                                dbRepository.loadUserInfo(contact.userID){infoResult ->
-                                    when(infoResult){
-                                        is Result.Error -> {
-                                            Handler(Looper.getMainLooper()).postDelayed({
-                                                CmuToast.createFancyToast(
-                                                    context,
-                                                    activity,
-                                                    "Download Failed",
-                                                    "Unable to load User Info",
-                                                    CmuToastStyle.ERROR,
-                                                    CmuToastDuration.SHORT
-                                                )
-                                            }, 200)
-                                        }
-                                        Result.Loading -> {}
-                                        is Result.Progress -> {}
-                                        is Result.Success -> {
-                                            infoResult.data?.let{info ->
-                                                loadProfileImage(
-                                                    context,
-                                                    activity,
-                                                    contact.userID,
-                                                    displayName = info.displayName,
-                                                    status = info.aboutStr,
-                                                    false,
-                                                    email = info.email,
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        onEventTriggered(LoginEvents.DoneEvent(it))
-                        onDataLoaded()
-                    }
-                    is Result.Error -> {
-                        onEventTriggered(
-                            event = LoginEvents.ErrorEvent(activity, context, result.msg)
-                        )
-                    }
-                    Result.Loading -> {
-                        loginEventStatus.value = LoginStatus.LOADING_DATA
-                        _loadingMsg.value = "Loading Chats"
-                    }
-
-                    is Result.Progress -> {
-                        //do nothing
-                    }
-                }
+        viewModelScope.launch {
+            while(!allTasksAdded){
+                Timber.tag(tag).d("Not all tasks added")
+                delay(100)
             }
-        }?: {
-            onEventTriggered(LoginEvents.ErrorEvent(activity, context, "UserId is null"))
+            while(appTaskManager.taskInProgress){
+//                Timber.tag(tag).d("Tasks in Progress")
+                delay(200)
+            }
+            onEventTriggered(LoginEvents.DoneEvent(myUserId))
+            onDataLoaded()
         }
     }
 
@@ -358,6 +356,7 @@ class LoginScreenViewModel @Inject constructor(
         context: Context,
         activity: Activity?,
         userID: String,
+        profileImageUrl: String,
         displayName: String,
         status: String,
         isMine: Boolean,
@@ -367,7 +366,40 @@ class LoginScreenViewModel @Inject constructor(
 //        messageType: MessageType,
     ){
         val localPath = "profile_photos/${if(isMine) "my_profile" else userID}.png"
-        storageRepository.downloadProfileImage(userID, context, localPath) { result ->
+        val updateDatabase: () -> Unit = {
+            ioScope.launch{
+                val roomContact = RoomContact(
+                    userID,
+                    displayName,
+                    email,
+                    status,
+                    localPath,
+                    profileImageUrl
+                )
+                chatMeUpDatabase.contactDao.upsertContact(roomContact)
+
+                if(!isMine){
+                    var roomChat: RoomChat? = null
+                    myUserID?.let{myUserID ->
+                        roomChat = RoomChat(
+                            id = convertTwoUserIDs(myUserID, userID),
+                            displayName = displayName,
+                            profilePhotoPath = localPath,
+                            otherUserId = userID
+                        )
+                    }
+                    loadChat(context, userID, roomChat)
+                }
+
+                Timber.tag(tag).d("Contact Saved for $displayName")
+            }
+
+        }
+        if(profileImageUrl.isEmpty() || profileImageUrl.isBlank()){
+            updateDatabase()
+            return
+        }
+        storageRepository.downloadImage(profileImageUrl, context, localPath) { result ->
             when (result) {
                 is Result.Error -> {
                     Handler(Looper.getMainLooper()).postDelayed({
@@ -396,32 +428,7 @@ class LoginScreenViewModel @Inject constructor(
                 is Result.Success -> {
                     Timber.tag(tag).d("Saving profile Success ${result.msg} for $displayName")
                     //update database
-                    ioScope.launch{
-                        val contact = Contact(
-                            userID,
-                            displayName,
-                            email,
-                            status,
-                            localPath,
-                            "user_photos/$userID/profile_image"
-                        )
-                        chatMeUpDatabase.contactDao.upsertContact(contact)
-
-                        if(!isMine){
-                            var chat: Chat? = null
-                            myUserID?.let{myUserID ->
-                                chat = Chat(
-                                    id = convertTwoUserIDs(myUserID, userID),
-                                    displayName = displayName,
-                                    profilePhotoPath = localPath,
-                                    otherUserId = userID
-                                )
-                            }
-                            loadChat(userID, chat)
-                        }
-
-                        Timber.tag(tag).d("Contact Saved for $displayName")
-                    }
+                    updateDatabase()
                 }
             }
         }

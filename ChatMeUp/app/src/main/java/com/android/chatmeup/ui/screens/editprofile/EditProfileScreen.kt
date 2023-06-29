@@ -114,7 +114,7 @@ fun EditProfileScreen(
     onBackClick: () -> Unit,
     editProfileViewModel: EditProfileViewModel = hiltViewModel()
 ){
-    val myContact by editProfileViewModel.myContact.collectAsState()
+    val myContact by editProfileViewModel.myRoomContact.collectAsState()
     val eventState by editProfileViewModel.eventState.collectAsState()
     val isUpdatingProfileImage by editProfileViewModel.isUpdatingProfileImage.collectAsState()
 
@@ -302,8 +302,6 @@ fun EditProfileScreen(
             },
             onConfirmDisplayName = {
                 editProfileViewModel.updateDisplayName(
-                    context,
-                    activity,
                     it
                 )
                 scope.launch {
@@ -323,8 +321,6 @@ fun EditProfileScreen(
             },
             onConfirmAbout = {
                 editProfileViewModel.updateAbout(
-                    context,
-                    activity,
                     it
                 )
                 scope.launch {

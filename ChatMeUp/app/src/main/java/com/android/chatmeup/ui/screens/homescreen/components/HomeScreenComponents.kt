@@ -2,6 +2,7 @@ package com.android.chatmeup.ui.screens.homescreen.components
 
 import android.app.Activity
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
@@ -30,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.rounded.Circle
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -48,12 +50,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.chatmeup.R
 import com.android.chatmeup.data.db.firebase_db.entity.UserInfo
-import com.android.chatmeup.data.db.room_db.entity.Chat
+import com.android.chatmeup.data.db.room_db.entity.RoomChat
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
@@ -84,10 +87,11 @@ fun ChatListItem(
     modifier: Modifier = Modifier,
     context: Context,
     myUserId: String,
-    item: Chat,
+    item: RoomChat,
     onNavigateToChat: (String) -> Unit,
     onProfileImageClicked: () -> Unit
 ){
+
     Card(onClick = {
         onNavigateToChat("${item.id}%%%${myUserId}%%%${item.otherUserId}%%%${item.no_of_unread_messages}")
     },
@@ -99,8 +103,7 @@ fun ChatListItem(
                 modifier = Modifier.clickable {
                     onProfileImageClicked()
                 },
-                imageFile = File(context.filesDir, item.profilePhotoPath),
-                isOnline = false,
+                imageObj = File(context.filesDir, item.profilePhotoPath),
                 size = 60.dp
             )
             Spacer(modifier = Modifier.width(20.dp))
@@ -131,7 +134,7 @@ fun ChatListItem(
                     style = MaterialTheme.typography.labelLarge
                 )
                 Spacer(modifier = Modifier.height(10.dp))
-                if(item.lastMessageSenderID == item.id){
+                if(item.lastMessageSenderID == item.otherUserId && item.no_of_unread_messages>0){
                     Card(
                         shape = CircleShape,
                         colors = CardDefaults.cardColors(
@@ -166,7 +169,6 @@ fun CmuSearchTextField(
         placeholder = "Search Chats",
         leadingIcon = {
             Icon(
-//                modifier = Modifier.size(22.dp),
                 imageVector = Icons.Default.Search,
                 contentDescription = "Search",
                 tint = neutral_disabled
@@ -175,10 +177,6 @@ fun CmuSearchTextField(
         text = searchTextValue,
         onValueChanged = onSearchTextValueChanged,
         onDone = { keyboardState?.hide() },
-//        trailingIcon =
-//        {
-//            Icon(imageVector = Icons.Default.Cancel, contentDescription = "Cancel Search")
-//        },
         shape = RoundedCornerShape(10),
     )
 }
@@ -320,6 +318,60 @@ fun BottomBarItem(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ConfirmLogoutDialog(
+    onConfirmLogout: () -> Unit,
+    onDismissLogout: () -> Unit
+){
+    Column {
+        BottomSheetDefaults.DragHandle(modifier = Modifier.align(Alignment.CenterHorizontally))
+        Text(
+            text = "Please note that if you logout All your information will be deleted from this device. Will you still like to logout?",
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center
+        )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly){
+            Button(
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                ),
+                onClick = {
+                    onConfirmLogout()
+                }
+            ) {
+                Text(
+                    text = "Yes",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+            }
+            Spacer(modifier = Modifier.width(20.dp))
+            Button(
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = seed
+                ),
+                onClick = {
+                    onDismissLogout()
+                }
+            ) {
+                Text(
+                    text = "No",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = md_theme_dark_onPrimaryContainer,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RequestsList(
     viewModel: HomeViewModel,
@@ -327,56 +379,70 @@ fun RequestsList(
 ){
     LazyColumn(
         modifier = Modifier
-            .padding(25.dp)
+            .padding(bottom = 25.dp, start = 25.dp, end = 25.dp)
             .fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(25.dp)
+        verticalArrangement = Arrangement.spacedBy(25.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ){
+        item {
+            BottomSheetDefaults.DragHandle(modifier = Modifier)
+        }
         repeat(notificationsList.size){
             item {
-                Row() {
-                    ProfilePicture(
-                        imageFile = notificationsList[it].profileImageUrl,
-                        isOnline = true,
-                        size = 90.dp
-                    )
-                    Spacer(modifier = Modifier.width(20.dp))
-                    Column(modifier = Modifier.weight(1f)){
-                        Text(
-                            text = notificationsList[it].displayName,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.titleLarge
+                Column(modifier = Modifier.fillMaxWidth()){
+                    Row(){
+                        ProfilePicture(
+                            modifier = Modifier,
+                            imageObj = Uri.parse(notificationsList[it].profileImageUrl),
+                            isOnline = true,
+                            size = 90.dp
                         )
-                        Spacer(modifier = Modifier.height(15.dp))
-                        Row(modifier = Modifier){
-                            Button(
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = seed
-                                ),
-                                onClick = {
-                                    viewModel.acceptNotificationPressed(notificationsList[it])
-                                }
-                            ) {
-                                Text(
-                                    text = "Confirm",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = md_theme_dark_onPrimaryContainer,
-                                )
+                        Spacer(modifier = Modifier.width(20.dp))
+
+                        Column(){
+                            Text(
+                                text = notificationsList[it].displayName,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = notificationsList[it].aboutStr,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(15.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly){
+                        Button(
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                            ),
+                            onClick = {
+                                viewModel.declineNotificationPressed(notificationsList[it])
                             }
-                            Spacer(modifier = Modifier.width(20.dp))
-                            Button(
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                                ),
-                                onClick = {
-                                    viewModel.declineNotificationPressed(notificationsList[it])
-                                }
-                            ) {
-                                Text(
-                                    text = "Delete",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer
-                                )
+                        ) {
+                            Text(
+                                text = "Delete",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(20.dp))
+                        Button(
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = seed
+                            ),
+                            onClick = {
+                                viewModel.acceptNotificationPressed(notificationsList[it])
                             }
+                        ) {
+                            Text(
+                                text = "Confirm",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = md_theme_dark_onPrimaryContainer,
+                            )
                         }
                     }
                 }
@@ -439,7 +505,9 @@ fun SheetLayout(
     onAddContactClicked: () -> Unit,
     newContactEmail: String,
     onNewContactEmailChanged: (String) -> Unit,
-    onCloseImage: () -> Unit
+    onCloseImage: () -> Unit,
+    onConfirmLogout: () -> Unit,
+    onDismissLogout: () -> Unit
 ) {
     when(currentScreen){
         BottomSheetScreen.AddContact -> {
@@ -462,6 +530,13 @@ fun SheetLayout(
             }
         }
 
+        BottomSheetScreen.ConfirmLogout -> {
+            ConfirmLogoutDialog(
+                onDismissLogout = onDismissLogout,
+                onConfirmLogout = onConfirmLogout
+            )
+        }
+
         BottomSheetScreen.ProfileImage -> {
             ImagePage(
                 title = selectedImageTitle,
@@ -478,4 +553,5 @@ sealed class BottomSheetScreen {
     object AddContact: BottomSheetScreen()
     object RequestsList: BottomSheetScreen()
     object ProfileImage: BottomSheetScreen()
+    object ConfirmLogout: BottomSheetScreen()
 }

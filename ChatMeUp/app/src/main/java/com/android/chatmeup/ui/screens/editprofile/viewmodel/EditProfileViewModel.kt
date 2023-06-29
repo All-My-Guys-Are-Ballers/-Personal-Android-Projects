@@ -4,11 +4,12 @@ import android.app.Activity
 import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.viewModelScope
+import com.android.chatmeup.AppTaskManager
 import com.android.chatmeup.data.Result
 import com.android.chatmeup.data.db.firebase_db.repository.DatabaseRepository
 import com.android.chatmeup.data.db.firebase_db.repository.StorageRepository
 import com.android.chatmeup.data.db.room_db.ChatMeUpDatabase
-import com.android.chatmeup.data.db.room_db.entity.Contact
+import com.android.chatmeup.data.db.room_db.entity.RoomContact
 import com.android.chatmeup.ui.DefaultViewModel
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
@@ -36,7 +37,10 @@ enum class EditProfileState{
     ERROR
 }
 @HiltViewModel
-class EditProfileViewModel @Inject constructor(private val chatMeUpDatabase: ChatMeUpDatabase) : DefaultViewModel() {
+class EditProfileViewModel @Inject constructor(
+    private val chatMeUpDatabase: ChatMeUpDatabase,
+    private val appTaskManager: AppTaskManager
+) : DefaultViewModel() {
     private val tag = EditProfileViewModel::class.java.simpleName
     private val ioScope = CoroutineScope(Dispatchers.IO + Job())
 
@@ -50,7 +54,7 @@ class EditProfileViewModel @Inject constructor(private val chatMeUpDatabase: Cha
     private val _isUpdatingProfileImage = MutableStateFlow(false)
     val isUpdatingProfileImage = _isUpdatingProfileImage.asStateFlow()
 
-    val myContact = MutableStateFlow(Contact("", "", "", "", "", ""))
+    val myRoomContact = MutableStateFlow(RoomContact("", "", "", "", "", ""))
     init {
         initialize()
     }
@@ -59,9 +63,9 @@ class EditProfileViewModel @Inject constructor(private val chatMeUpDatabase: Cha
         _eventState.value = EditProfileState.LOADING
         viewModelScope.launch{
             try{
-                chatMeUpDatabase.contactDao.getContact(myUserID).collect {
+                chatMeUpDatabase.contactDao.getContactFlow(myUserID).collect {
                     Timber.tag(tag).d("Contact $it")
-                    myContact.value = it
+                    myRoomContact.value = it
                     _eventState.value = EditProfileState.DONE
                 }
             }
@@ -72,65 +76,15 @@ class EditProfileViewModel @Inject constructor(private val chatMeUpDatabase: Cha
         }
     }
     fun updateDisplayName(
-        context: Context,
-        activity: Activity?,
         displayName: String
     ){
-        ioScope.launch{//update room
-            //update firebase
-            dbRepository.updateDisplayName(myUserID, displayName){result ->
-                when(result){
-                    is Result.Error -> {
-                        CmuToast.createFancyToast(
-                            context,
-                            activity,
-                            "Display Name",
-                            "Unable to update Display Name",
-                            CmuToastStyle.ERROR,
-                            CmuToastDuration.SHORT
-                        )
-                        Timber.tag(tag).d("Unable to update Display Name error: ${result.msg}")
-                    }
-                    Result.Loading -> {}
-                    is Result.Progress -> {}
-                    is Result.Success -> {
-                        ioScope.launch {
-                            chatMeUpDatabase.contactDao.upsertContact(myContact.value.copy(displayName = displayName))
-                        }
-                    }
-                }
-            }
-        }
+        appTaskManager.addTaskToQueue(AppTaskManager.Task.UpdateDisplayName(displayName))
     }
 
     fun updateAbout(
-        context: Context,
-        activity: Activity?,
         aboutStr: String
     ){
-        //update firebase
-        dbRepository.updateUserStatus(myUserID, aboutStr){result ->
-            when(result){
-                is Result.Error -> {
-                    CmuToast.createFancyToast(
-                        context,
-                        activity,
-                        "About",
-                        "Unable to update About",
-                        CmuToastStyle.ERROR,
-                        CmuToastDuration.SHORT
-                    )
-                    Timber.tag(tag).d("Unable to update About error: ${result.msg}")
-                }
-                Result.Loading -> {}
-                is Result.Progress -> {}
-                is Result.Success -> {
-                    ioScope.launch {
-                        chatMeUpDatabase.contactDao.upsertContact(myContact.value.copy(aboutStr = aboutStr))
-                    }
-                }
-            }
-        }
+        appTaskManager.addTaskToQueue(AppTaskManager.Task.UpdateDisplayName(aboutStr))
     }
 
     fun updateProfileImage(
@@ -172,6 +126,8 @@ class EditProfileViewModel @Inject constructor(private val chatMeUpDatabase: Cha
                         val fos = FileOutputStream(file)
                         fos.write(imageByteArray)
                         fos.close()
+                        //update database
+                        dbRepository.updateUserProfileImageUrl(myUserID, result.data.toString())
                     }
                 }
             }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.ModalBottomSheetLayout
 import androidx.compose.material.ModalBottomSheetValue
@@ -35,9 +36,13 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImagePainter
+import coil.compose.rememberAsyncImagePainter
+import com.android.chatmeup.AppTaskManager
 import com.android.chatmeup.R
 import com.android.chatmeup.data.db.firebase_db.entity.UserInfo
-import com.android.chatmeup.data.db.room_db.entity.Chat
+import com.android.chatmeup.data.db.room_db.entity.RoomChat
+import com.android.chatmeup.data.db.room_db.entity.RoomContact
 import com.android.chatmeup.ui.screens.components.ProfilePicture
 import com.android.chatmeup.ui.screens.homescreen.components.BottomSheetScreen
 import com.android.chatmeup.ui.screens.homescreen.components.ChatListItem
@@ -71,15 +76,17 @@ fun HomeScreen(
 ){
     val systemUiController = rememberSystemUiController()
     //change status bar color anytime we change light mode or dark mode
-
+    val myUserID = Firebase.auth.uid
+    if(myUserID == null) {
+        onNavigateToLogin()
+        return
+    }
     val viewModel: HomeViewModel = homeViewModelProvider(
         factory = factory,
-        myUserId = ""
+        myUserID = myUserID
     )
 
-    val myUserInfo by viewModel.myUpdatedInfo.observeAsState()
-
-    val _viewState by viewModel.viewState.collectAsState()
+    val viewState by viewModel.viewState.collectAsState()
 
     val notificationsList by viewModel.notificationListWithUserInfo.observeAsState()
 
@@ -128,9 +135,28 @@ fun HomeScreen(
         }
     }
 
+    LaunchedEffect(viewState){
+        viewState.chatsList.forEach {
+            val file = File(context.filesDir, it.profilePhotoPath)
+            if(it.onlineProfilePhotoPath.isNotBlank() && (!file.exists() || file.length() <= 0 || !file.isFile)){
+                viewModel.appTaskManager.addDownloadTask(
+                    context,
+                    AppTaskManager.DownloadTask(
+                        it.onlineProfilePhotoPath,
+                        it.profilePhotoPath,
+                        shouldRetry = true,
+                        onDone = {
+                        }
+                    )
+                )
+            }
+        }
+    }
+
     ModalBottomSheetLayout(
         sheetState = modalBottomSheetState,
         sheetBackgroundColor = MaterialTheme.colorScheme.background,
+        sheetShape = if(currentBottomSheet != BottomSheetScreen.ProfileImage)RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp) else RectangleShape,
         sheetContent = {
             SheetLayout(
                 currentScreen = currentBottomSheet,
@@ -158,6 +184,15 @@ fun HomeScreen(
                         darkIcons = !isDarkTheme
                     )
                     scope.launch{
+                        modalBottomSheetState.hide()
+                    }
+                },
+                onConfirmLogout = {
+                    viewModel.logout(context)
+                    onNavigateToLogin()
+                },
+                onDismissLogout = {
+                    scope.launch {
                         modalBottomSheetState.hide()
                     }
                 }
@@ -257,7 +292,7 @@ fun HomeScreen(
                         context = context,
                         searchTextValue = searchText,
                         onSearchTextValueChanged = { searchText = it },
-                        list = _viewState.chatsList,
+                        list = viewState.chatsList,
                         myUserId = viewModel.myUserId,
                         onProfileImageClicked = { localPhotoPath, displayName ->
                             selectedImageTitle = displayName
@@ -278,10 +313,13 @@ fun HomeScreen(
 
                     2 -> MoreScreen(
                         modifier = Modifier.padding(it),
-                        myUserInfo = myUserInfo,
+                        context = context,
+                        myContact = viewState.myContact,
                         onSignOutClicked = {
-                            viewModel.logout()
-                            onNavigateToLogin()
+                            currentBottomSheet = BottomSheetScreen.ConfirmLogout
+                            scope.launch {
+                                modalBottomSheetState.show()
+                            }
                         },
                         onNavigateToEditProfile = onNavigateToEditProfile
                     )
@@ -300,7 +338,7 @@ fun ChatsScreen(
     searchTextValue: String,
     onSearchTextValueChanged: (String) -> Unit,
     onProfileImageClicked: (String, String) -> Unit,
-    list: List<Chat>,
+    list: List<RoomChat>,
     myUserId: String,
     onNavigateToChat: (String) -> Unit
 ){
@@ -329,8 +367,9 @@ fun ChatsScreen(
 
 @Composable
 fun MoreScreen(
+    context: Context,
     modifier: Modifier = Modifier,
-    myUserInfo: UserInfo?,
+    myContact: RoomContact,
     onSignOutClicked: () -> Unit,
     onNavigateToEditProfile: () -> Unit,
 ){
@@ -341,10 +380,8 @@ fun MoreScreen(
         color = MaterialTheme.colorScheme.background
     ) {
         Column() {
-            myUserInfo?.let {
-                UserInfoWithProfilePicture(myUserInfo = it) {
-                    onNavigateToEditProfile()
-                }
+            ContactInfoWithProfilePicture(context = context, myContact = myContact) {
+                onNavigateToEditProfile()
             }
             Spacer(modifier = Modifier.height(25.dp))
             MoreItem() {
@@ -364,7 +401,7 @@ fun MoreScreen(
 @Composable
 fun ChatList(
     context: Context,
-    list: List<Chat>,
+    list: List<RoomChat>,
     myUserId: String,
     onNavigateToChat: (String) -> Unit,
     onProfileImageClicked: (String, String) -> Unit
@@ -380,7 +417,7 @@ fun ChatList(
                     context = context,
                     myUserId = myUserId,
                     item = list[it],
-                    onNavigateToChat = onNavigateToChat
+                    onNavigateToChat = onNavigateToChat,
                 ) {
                     onProfileImageClicked(list[it].profilePhotoPath, list[it].displayName)
                 }
@@ -391,10 +428,17 @@ fun ChatList(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UserInfoWithProfilePicture(
-    myUserInfo: UserInfo,
+fun ContactInfoWithProfilePicture(
+    context: Context,
+    myContact: RoomContact,
     onNavigateToEditProfile: () -> Unit,
 ){
+    val profileImageFile = File(context.filesDir, myContact.localProfilePhotoPath)
+    val imagePainter: AsyncImagePainter = rememberAsyncImagePainter(profileImageFile)
+    LaunchedEffect(myContact){
+        imagePainter.onForgotten()
+        imagePainter.onRemembered()
+    }
     Card(onClick = {
         onNavigateToEditProfile()
     },
@@ -403,21 +447,21 @@ fun UserInfoWithProfilePicture(
     ) {
         Row() {
             ProfilePicture(
-                imageFile = myUserInfo.profileImageUrl,
+                imageObj = File(context.filesDir, myContact.localProfilePhotoPath),
                 size = 60.dp,
-                shape = CircleShape
+                shape = CircleShape,
             )
             Spacer(modifier = Modifier.width(20.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = myUserInfo.displayName,
+                    text = myContact.displayName,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = myUserInfo.email,
+                    text = myContact.email,
                     overflow = TextOverflow.Ellipsis,
                     color = neutral_disabled,
                     style = MaterialTheme.typography.labelLarge,

@@ -9,6 +9,8 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,7 +25,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material.ExperimentalMaterialApi
@@ -45,6 +46,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -61,9 +63,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.android.chatmeup.R
-import com.android.chatmeup.data.db.firebase_db.entity.ChatInfo
-import com.android.chatmeup.data.db.firebase_db.entity.Message
-import com.android.chatmeup.data.db.firebase_db.entity.UserInfo
+import com.android.chatmeup.data.DownloadState
+import com.android.chatmeup.data.db.room_db.data.MessageType
+import com.android.chatmeup.data.db.room_db.entity.RoomContact
+import com.android.chatmeup.data.db.room_db.entity.RoomMessage
 import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
@@ -79,8 +82,11 @@ import com.android.chatmeup.ui.theme.neutral_disabled
 import com.android.chatmeup.ui.theme.seed
 import com.android.chatmeup.util.createTempImageFile
 import com.android.chatmeup.util.epochToHoursAndMinutes
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.io.File
 
 @OptIn(ExperimentalMaterialApi::class)
 @RequiresApi(Build.VERSION_CODES.O)
@@ -95,20 +101,27 @@ fun ChatScreen(
     onBackClicked: () -> Unit,
     noOfUnreadMessages: String
 ) {
+    val myUserID = Firebase.auth.uid
+    if(myUserID == null) {
+        onBackClicked()
+        return
+    }
     val viewModel = chatViewModelProvider(
         chatId = chatId,
-        myUserId = userId,
+        myUserId = myUserID,
         otherUserId = otherUserId,
         factory = factory
     )
     val chatInfo by viewModel.chatInfo.observeAsState()
-    val otherUserInfo by viewModel.otherUser.observeAsState()
+//    val otherUserInfo by viewModel.otherUser.observeAsState()
 
-    val messageList by viewModel.messagesList.observeAsState()
+    val viewState by viewModel.viewState.collectAsState()
 
-    val newMessageText by viewModel.newMessageText.observeAsState()
+    val newMessageText by viewModel.newMessageText.collectAsState()
 
-    val lazyListState = rememberLazyListState(messageList?.size?.minus(chatInfo?.no_of_unread_messages!!) ?: 0)
+    val chatMediaListMap by viewModel.chatMediaListMap.collectAsState()
+
+    val lazyListState by viewModel.lazyListState.collectAsState()
 
     val modalBottomSheetState =
         rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden,
@@ -162,9 +175,9 @@ fun ChatScreen(
     ) { isGranted ->
         if (isGranted) {
             // Permission granted, launch the camera
-            if (newPhotoURI != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                context.contentResolver.delete(newPhotoURI!!, null)
-            }
+//            if (newPhotoURI != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+//                context.contentResolver.delete(newPhotoURI!!, null)
+//            }
             newPhotoURI = FileProvider.getUriForFile(
                 context,
                 context.applicationContext.packageName + ".provider",
@@ -189,11 +202,11 @@ fun ChatScreen(
         }
     }
 
-    LaunchedEffect(messageList){
+    LaunchedEffect(viewState.roomMessageList.size){
         if(lazyListState.layoutInfo.totalItemsCount > noOfUnreadMessages.toInt()+1) {
-//            lazyListState.animateScrollToItem(
-//                lazyListState.layoutInfo.totalItemsCount - 1 - noOfUnreadMessages.toInt()
-//            )
+            lazyListState.scrollToItem(
+                lazyListState.layoutInfo.totalItemsCount - 1 - noOfUnreadMessages.toInt()
+            )
         }
     }
 
@@ -204,20 +217,20 @@ fun ChatScreen(
                 onUploadFromStorageClicked = { requestStoragePermissionLauncher.launch(
                     if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
                 ) },
-                otherUserInfo = otherUserInfo,
+                otherUserRoomContact = viewState.roomContact,
                 onBackClicked = onBackClicked,
                 newMessageText = newMessageText,
                 viewModel = viewModel,
-                messageList = messageList,
+                roomMessageList = viewState.roomMessageList,
                 lazyListState = lazyListState,
                 userId = userId,
-                chatInfo = chatInfo,
                 modalBottomSheetState = modalBottomSheetState,
                 onAddItemClicked = {
                     scope.launch {
                         modalBottomSheetState.show()
                     }
                 },
+                chatMediaListMap = chatMediaListMap,
                 newPhotoUri = newPhotoURI,
                 context = context,
                 activity = activity,
@@ -230,16 +243,18 @@ fun ChatScreen(
                     onUploadCancelled = {
                         chatState = ChatState.CHAT
                     },
-                    messageText = newMessageText!!,
+                    messageText = newMessageText,
                     onValueChanged = {value ->
                         viewModel.newMessageText.value = value
                     },
                     onSendMessage = {
+                        chatState = ChatState.CHAT
                         newPhotoURI?.let { uri ->
                             viewModel.sendMessagePressed(
                                 context = context,
                                 activity = activity,
-                                newPhotoURI = uri
+                                newPhotoURI = uri,
+                                messageText = newMessageText.trim()
                             )
                         } ?: CmuToast.createFancyToast(
                             context = context,
@@ -249,7 +264,6 @@ fun ChatScreen(
                             CmuToastStyle.ERROR,
                             CmuToastDuration.SHORT
                         )
-                        chatState = ChatState.CHAT
                     }
 
                 )
@@ -276,19 +290,19 @@ fun ChatScreen(
 fun ChatListScreen(
     onTakePicture: () -> Unit,
     onUploadFromStorageClicked: () -> Unit,
-    otherUserInfo: UserInfo?,
+    otherUserRoomContact: RoomContact,
     onBackClicked: () -> Unit,
-    newMessageText: String?,
+    newMessageText: String,
     viewModel: ChatViewModel,
-    messageList: MutableList<Message>?,
+    roomMessageList: List<RoomMessage>,
     lazyListState: LazyListState,
     userId: String,
-    chatInfo: ChatInfo?,
     modalBottomSheetState: ModalBottomSheetState,
     onAddItemClicked: () -> Unit,
     newPhotoUri: Uri?,
     context: Context,
     activity: Activity?,
+    chatMediaListMap: HashMap<String, DownloadState>,
 ){
     val scope = rememberCoroutineScope()
     ModalBottomSheetLayout(
@@ -305,21 +319,22 @@ fun ChatListScreen(
         Scaffold(
             topBar = {
                 ChatTopBar(
-                    otherUserInfo = otherUserInfo,
+                    context = context,
+                    otherUserRoomContact = otherUserRoomContact,
                     onBackClicked = onBackClicked
                 )
             },
             bottomBar = {
                 ChatBottomBar(
-                    messageText = newMessageText ?: "",
+                    messageText = newMessageText,
                     viewModel = viewModel,
                     onAddItemClicked = onAddItemClicked,
                     onSendMessagePressed = {
+                        scope.launch {
+                            modalBottomSheetState.hide()
+                        }
                         viewModel.sendMessagePressed(context,
-                        activity, newPhotoUri)
-//                        scope.launch {
-//                            lazyListState.animateScrollToItem(index = lazyListState.layoutInfo.totalItemsCount-1)
-//                        }
+                        activity, null, newMessageText.trim())
                     }
                 )
             }
@@ -328,17 +343,23 @@ fun ChatListScreen(
                 modifier = Modifier.fillMaxSize(),
                 color = MaterialTheme.colorScheme.tertiaryContainer
             ) {
-                if (!messageList.isNullOrEmpty()) {
+                if (!roomMessageList.isNullOrEmpty()) {
                     LazyColumn(
                         state = lazyListState,
                         verticalArrangement = Arrangement.Bottom,
                         modifier = Modifier.padding(paddingValues)
                     ) {
-                        repeat(messageList.size ?: 0) {
+                        repeat(roomMessageList.size ?: 0) {
                             item {
                                 MessageItem(
+                                    context = context,
+                                    activity = activity,
+                                    viewModel = viewModel,
                                     myUserId = userId,
-                                    message = messageList[it],
+                                    roomMessage = roomMessageList[it],
+                                    downloadState = if(roomMessageList[it].messageType == MessageType.TEXT_IMAGE.toString())
+                                        chatMediaListMap[roomMessageList[it].messageId]
+                                    else DownloadState.NotDownloaded
                                 )
                             }
                         }
@@ -349,13 +370,42 @@ fun ChatListScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageItem(
+    context: Context,
+    activity: Activity?,
+    viewModel: ChatViewModel,
     myUserId: String,
-    message: Message,
+    roomMessage: RoomMessage,
+    downloadState: DownloadState?,
 ){
-    val isSender = myUserId == message.senderID
+    val isSender = myUserId == roomMessage.senderID
+    val onClick = {
+        when (downloadState) {
+            DownloadState.Downloaded -> {
+                //todo
+            }
 
+            is DownloadState.Downloading -> {
+                //do nothing
+            }
+
+            DownloadState.NotDownloaded -> {
+                roomMessage.serverFilePath?.let {
+                    viewModel.loadImage(context, activity,
+                        it, roomMessage.messageId)
+                }
+            }
+
+            DownloadState.OnQueue -> {
+                //do nothing
+            }
+
+            else -> {//do nothing
+            }
+        }
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -369,37 +419,51 @@ fun MessageItem(
                 bottomStart = if(isSender) 15.dp else 0.dp,
                 bottomEnd = if(isSender) 0.dp else 15.dp
             ),
-            modifier = Modifier.padding(start = if(isSender)70.dp else 0.dp, end = if(!isSender)70.dp else 0.dp),
+            modifier = Modifier
+                .padding(
+                    start = if (isSender) 70.dp else 0.dp,
+                    end = if (!isSender) 70.dp else 0.dp
+                )
+                .combinedClickable(
+                    onClick = {},
+                    onLongClick = {}
+                ),
             colors = CardDefaults.cardColors(
                 containerColor = if(isSender) seed else MaterialTheme.colorScheme.background
-            )
+            ),
         ) {
             Column(
 //                modifier = Modifier.padding(10.dp),
                 horizontalAlignment = if (isSender) Alignment.End else Alignment.Start
             ) {
-                if(message.imageUrl.isNotBlank()){
-                    TextImage(
-                        modifier = Modifier.padding(5.dp),
-                        imageUri = Uri.parse(message.imageUrl)
-                    ) {
-                        // TODO :: Load Image Page
+                if(roomMessage.messageType == MessageType.TEXT_IMAGE.toString()){
+                    downloadState?.let {
+                        TextImage(
+                            modifier = Modifier.padding(5.dp),
+                            context = context,
+                            roomMessage = roomMessage,
+                            downloadState = it
+                        ) {
+                            onClick()
+                        }
                     }
                 }
-                Spacer(modifier = Modifier.height(5.dp))
+                if(roomMessage.messageText.isNotBlank()){
+                    Spacer(modifier = Modifier.height(5.dp))
+                    Text(
+                        text = roomMessage.messageText,
+                        modifier = Modifier
+                            .align(Alignment.Start)
+                            .padding(horizontal = 10.dp),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Left,
+                        color = if (isSender) Color.White else MaterialTheme.colorScheme.onBackground
+                    )
+                }
                 Text(
-                    text = message.text,
-                    modifier = Modifier
-                        .align(Alignment.Start)
-                        .padding(horizontal = 10.dp),
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Left,
-                    color = if(isSender) Color.White else MaterialTheme.colorScheme.onBackground
-                )
-                Text(
-                    text = "${epochToHoursAndMinutes(message.epochTimeMs)}${
+                    text = "${epochToHoursAndMinutes(roomMessage.messageTime)}${
                         if(isSender) {
-                            if(message.seen) "•Read" else "•Sent"
+                            if(false) "•Read" else "•Sent"
                         } else ""
                     }",
                     modifier = Modifier.padding(horizontal = 10.dp),
@@ -413,8 +477,10 @@ fun MessageItem(
 }
 
 @Composable
-fun ChatTopBar(otherUserInfo: UserInfo?,
-               onBackClicked: () -> Unit,
+fun ChatTopBar(
+    context: Context,
+    otherUserRoomContact: RoomContact,
+    onBackClicked: () -> Unit,
 ){
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -431,14 +497,14 @@ fun ChatTopBar(otherUserInfo: UserInfo?,
                 )
             }
             ProfilePicture(
-                imageFile = otherUserInfo?.profileImageUrl ?: "",
+                imageObj = File(context.filesDir, otherUserRoomContact.localProfilePhotoPath),
                 size = 40.dp,
-                isOnline = otherUserInfo?.online ?: false
+                isOnline = otherUserRoomContact.isOnline
             )
             
             Spacer(modifier = Modifier.width(20.dp))
 
-            otherUserInfo?.displayName?.let {
+            otherUserRoomContact.displayName.let {
                 Text(
                     text = it,
                     style = MaterialTheme.typography.titleLarge
@@ -480,7 +546,9 @@ fun ChatBottomBar(
                     viewModel.newMessageText.value = it
                 },
 //                    .height(40.dp),
-                modifier = Modifier.weight(1f).heightIn(min = 40.dp, max = 100.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 40.dp, max = 100.dp),
                 placeholder = {
                     Text(
                         text = "Message",
