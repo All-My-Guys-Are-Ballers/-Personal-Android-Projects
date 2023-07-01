@@ -39,6 +39,17 @@ fun epochToHoursAndMinutes(epoch: Long): String {
     return formatter.format(date)
 }
 
+fun epochToDayMonthYear(epoch: Long): String {
+    val date =
+        Date(epoch)
+    val formatter = SimpleDateFormat(
+        "dd MMM yy",
+        Locale.getDefault()
+    )
+
+    return formatter.format(date)
+}
+
 fun convertEpochToString(epochTime: Long): String {
     val currentTime = System.currentTimeMillis()
     val currentCalendar = Calendar.getInstance()
@@ -48,7 +59,7 @@ fun convertEpochToString(epochTime: Long): String {
     epochCalendar.timeInMillis = epochTime
 
     val dateFormatter = SimpleDateFormat("hh:mm a", Locale.getDefault())
-    val dateFormat = SimpleDateFormat("dd/MM/yy", Locale.getDefault())
+    val dateFormat = SimpleDateFormat("dd MMM yy", Locale.getDefault())
 
     val currentDayStart = Calendar.getInstance()
     currentDayStart.set(Calendar.HOUR_OF_DAY, 0)

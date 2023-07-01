@@ -15,10 +15,10 @@ interface MessageDao{
     @Delete
     fun deleteMessage(roomMessage: RoomMessage)
 
-    @Query("SELECT * FROM roommessage WHERE :messageID = messageId")
+    @Query("SELECT * FROM roommessage WHERE :messageID = messageID")
     fun getMessage(messageID: String): RoomMessage
 
-    @Query("SELECT EXISTS(SELECT * FROM roommessage WHERE :messageID = messageId)")
+    @Query("SELECT EXISTS(SELECT * FROM roommessage WHERE :messageID = messageID)")
     fun messageExists(messageID: String): Boolean
 
     @Query("SELECT EXISTS(SELECT * FROM roommessage WHERE :chatID = chatID ORDER BY messageTime ASC)")
@@ -26,6 +26,9 @@ interface MessageDao{
 
     @Query("SELECT * FROM roommessage WHERE :chatID = chatID ORDER BY messageTime ASC")
     fun getMessagesOrderedByTime(chatID: String): Flow<List<RoomMessage>>
+
+    @Query("SELECT * FROM roommessage")
+    fun getAllMessages(): List<RoomMessage>
 
     @Query("SELECT * FROM roommessage WHERE :chatID = chatID ORDER BY messageTime ASC LIMIT 1")
     fun getLastMessage(chatID: String): Flow<RoomMessage>

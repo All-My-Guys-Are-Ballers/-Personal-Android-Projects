@@ -42,9 +42,10 @@ fun NavGraphBuilder.homeGraph(
             },
             onNavigateToEditProfile = {
                 onNavigateToEditProfile(navBackStackEntry)
-            }
-        ) {
-            onNavigateToSettings(navBackStackEntry)
-        }
+            },
+            onNavigateToSettings = {
+                onNavigateToSettings(navBackStackEntry)
+            },
+        )
     }
 }

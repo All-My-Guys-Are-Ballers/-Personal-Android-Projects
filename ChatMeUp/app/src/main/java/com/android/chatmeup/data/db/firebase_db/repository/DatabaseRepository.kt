@@ -41,6 +41,14 @@ class DatabaseRepository {
         firebaseDatabaseService.pushNewMessage(userID, chatID, message)
     }
 
+    fun pushNewContact(otherUserID: String, myUserID: String) {
+        firebaseDatabaseService.pushNewContact(otherUserID, myUserID)
+    }
+
+    fun removeContact(otherUserID: String, myUserID: String) {
+        firebaseDatabaseService.removeContact(otherUserID, myUserID)
+    }
+
     fun updateNewUser(user: User) {
         firebaseDatabaseService.updateNewUser(user)
     }
@@ -100,12 +108,24 @@ class DatabaseRepository {
         firebaseDatabaseService.removeMessages(messagesID)
     }
 
-    fun removeMessage(chatID: String, messageID: String){
-        firebaseDatabaseService.removeMessage(chatID, messageID)
+    fun removeMessage(otherUserID: String, chatID: String, messageID: String){
+        firebaseDatabaseService.removeMessage(otherUserID, chatID, messageID)
     }
 
     fun removeNewMessages(userID: String, messageID: String){
         firebaseDatabaseService.removeNewMessages(userID, messageID)
+    }
+
+    fun updateNewContacts(userID: String, otherUserID: String){
+        firebaseDatabaseService.updateNewContacts(userID, otherUserID)
+    }
+
+    fun updateRemovedContacts(userID: String, otherUserID: String){
+        firebaseDatabaseService.updateRemovedContacts(userID, otherUserID)
+    }
+
+    fun updateRemovedMessages(userID: String, messageID: String){
+        firebaseDatabaseService.updateRemovedMessages(userID, messageID)
     }
 
     //endregion
@@ -215,6 +235,18 @@ class DatabaseRepository {
 
     fun loadAndObserveNewMessagesAdded(userID: String, observer: FirebaseReferenceChildObserver, b: ((Result<Message>) -> Unit)) {
         firebaseDatabaseService.attachNewMessagesObserver(Message::class.java, userID, observer, b)
+    }
+
+    fun loadAndObserveNewContactsAdded(userID: String, observer: FirebaseReferenceChildObserver, b: ((Result<UserFriend>) -> Unit)) {
+        firebaseDatabaseService.attachNewContactsObserver(UserFriend::class.java, userID, observer, b)
+    }
+
+    fun loadAndObserveContactsRemoved(userID: String, observer: FirebaseReferenceChildObserver, b: ((Result<UserFriend>) -> Unit)) {
+        firebaseDatabaseService.attachRemoveContactsObserver(UserFriend::class.java, userID, observer, b)
+    }
+
+    fun loadAndObserveMessagesRemoved(userID: String, observer: FirebaseReferenceChildObserver, b: ((Result<Message>) -> Unit)) {
+        firebaseDatabaseService.attachRemovedMessagesObserver(Message::class.java, userID, observer, b)
     }
 
     fun loadAndObserveChat(chatID: String, observer: FirebaseReferenceValueObserver, b: ((Result<Chat>) -> Unit)) {

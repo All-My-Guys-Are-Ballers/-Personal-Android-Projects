@@ -9,6 +9,9 @@ data class User(
     @get:PropertyName("notifications") @set:PropertyName("notifications") var notifications: HashMap<String, UserNotification> = HashMap(),
     @get:PropertyName("sentRequests") @set:PropertyName("sentRequests") var sentRequests: HashMap<String, UserRequest> = HashMap(),
     @get:PropertyName("newMessages") @set:PropertyName("newMessages") var newMessages: HashMap<String, Message> = HashMap(),
+    @get:PropertyName("newContacts") @set:PropertyName("newContacts") var newContacts: HashMap<String, UserFriend> = HashMap(),
+    @get:PropertyName("removedContacts") @set:PropertyName("removedContacts") var removedContacts: HashMap<String, UserFriend> = HashMap(),
+    @get:PropertyName("removedMessages") @set:PropertyName("removedMessages") var removedMessages: HashMap<String, Message> = HashMap(),
     )
 
 data class UserFriend(

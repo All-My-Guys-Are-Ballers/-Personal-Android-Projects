@@ -16,7 +16,6 @@ import androidx.core.view.updatePadding
 import androidx.navigation.compose.rememberNavController
 import com.android.chatmeup.data.Result
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
-import com.android.chatmeup.data.db.firebase_db.entity.UserFriend
 import com.android.chatmeup.data.db.firebase_db.remote.FirebaseReferenceChildObserver
 import com.android.chatmeup.data.db.firebase_db.remote.FirebaseReferenceValueObserver
 import com.android.chatmeup.data.db.firebase_db.repository.DatabaseRepository
@@ -53,7 +52,9 @@ class MainActivity : ComponentActivity() {
     private val dbRepository = DatabaseRepository()
     private val storageRepository = StorageRepository()
     private val newMessagesFbReferenceChildObserver = FirebaseReferenceChildObserver()
-    private val newFriendsFbReferenceValueObserver = FirebaseReferenceValueObserver()
+    private val newFriendsFbReferenceChildObserver = FirebaseReferenceChildObserver()
+    private val removeFriendsFbReferenceChildObserver = FirebaseReferenceChildObserver()
+    private val removeMessagesFbReferenceChildObserver = FirebaseReferenceChildObserver()
     private var friendsUserInfoReferenceValueObserverList: MutableList<FirebaseReferenceValueObserver> = mutableListOf()
     private val ioScope = CoroutineScope(Dispatchers.IO + Job())
     private val taskList: Queue<Triple<Any, Boolean, String>> = LinkedList()
@@ -108,7 +109,16 @@ class MainActivity : ComponentActivity() {
                         chatMeUpApp = chatMeUpApp,
                         startObserving = {
                             if(!newMessagesFbReferenceChildObserver.isObserving())loadAndObserveAllNewMessages(newMessagesFbReferenceChildObserver)
-                            if(newFriendsFbReferenceValueObserver.isObserving())loadAndObserveNewFriends(newFriendsFbReferenceValueObserver)
+                            if(!newFriendsFbReferenceChildObserver.isObserving())loadAndObserveAllNewContacts(newFriendsFbReferenceChildObserver)
+                            if(!removeFriendsFbReferenceChildObserver.isObserving())loadAndObserveContactsRemoved(removeFriendsFbReferenceChildObserver)
+                            if(!removeMessagesFbReferenceChildObserver.isObserving())loadAndObserveMessagesRemoved(removeMessagesFbReferenceChildObserver)
+                        },
+                        stopObserving = {
+                            newMessagesFbReferenceChildObserver.clear()
+                            newFriendsFbReferenceChildObserver.clear()
+                            removeFriendsFbReferenceChildObserver.clear()
+                            friendsUserInfoReferenceValueObserverList.forEach{it.clear()}
+                            friendsUserInfoReferenceValueObserverList.removeIf { true }
                         }
                     )
                 }
@@ -139,62 +149,69 @@ class MainActivity : ComponentActivity() {
     private fun loadAndObserveAllNewMessages(observer: FirebaseReferenceChildObserver){
         val ioScope = CoroutineScope(Dispatchers.IO + Job())
         Firebase.auth.uid?.let{myUserId ->
-            dbRepository.loadAndObserveNewMessagesAdded(
-                myUserId,
-                observer
-            ) { result ->
-                when (result) {
-                    is Result.Error -> {
-                        Timber.tag(tag).e("Error loading Message")
-                    }
+            try{
+                dbRepository.loadAndObserveNewMessagesAdded(
+                    myUserId,
+                    observer
+                ) { result ->
+                    when (result) {
+                        is Result.Error -> {
+                            Timber.tag(tag).e("Error loading Message")
+                        }
 
-                    Result.Loading -> {}
-                    is Result.Progress -> {}
-                    is Result.Success -> {
-                        result.data?.let {
-                            //Update room
-                            val message = firebaseMessageToRoomMessage(it)
-                            ioScope.launch {
-                                //update message table
-                                chatMeUpDatabase.messageDao.upsertMessage(message)
-                                //update chat LastMessage
-                                if(chatMeUpDatabase.chatDao.chatExists(message.chatID)){
-                                    val chat =
-                                        chatMeUpDatabase.chatDao.getChat(message.chatID).apply {
-                                            no_of_unread_messages += 1
-                                            lastMessageText = message.messageText
-                                            lastMessageTime = message.messageTime
-                                            messageType = enumValueOf(message.messageType)
-                                            lastMessageSenderID = message.senderID
-                                        }
-                                    chatMeUpDatabase.chatDao.upsertChat(chat)
+                        Result.Loading -> {}
+                        is Result.Progress -> {}
+                        is Result.Success -> {
+                            result.data?.let {
+                                //Update room
+                                val message = firebaseMessageToRoomMessage(it)
+                                ioScope.launch {
+                                    //update message table
+                                    chatMeUpDatabase.messageDao.upsertMessage(message)
+                                    //update chat LastMessage
+                                    if (chatMeUpDatabase.chatDao.chatExists(message.chatID)) {
+                                        val chat =
+                                            chatMeUpDatabase.chatDao.getChat(message.chatID).apply {
+                                                no_of_unread_messages += 1
+                                                lastMessageText = message.messageText
+                                                lastMessageTime = message.messageTime
+                                                messageType = enumValueOf(message.messageType)
+                                                lastMessageSenderID = message.senderID
+                                            }
+                                        chatMeUpDatabase.chatDao.upsertChat(chat)
+                                    }
                                 }
-                            }
-                            //Delete from Firebase
-                            dbRepository.removeNewMessages(myUserId, it.messageID)
+                                //Delete from Firebase
+                                dbRepository.removeNewMessages(myUserId, it.messageID)
 
-                            //download Thumbnail
-                            if(message.messageType == MessageType.TEXT_IMAGE.toString()){
-                                val localFilePath =
-                                    "${message.chatID}/${message.messageId}_thumbnail.png"
-                                message.serverThumbnailPath?.let { it1 ->
-                                    storageRepository.downloadChatThumbnail(
-                                        this.applicationContext,
-                                        it1,
-                                        localFilePath
-                                    ) { thumbnailResult ->
-                                        when (thumbnailResult) {
-                                            is Result.Error -> {}
-                                            Result.Loading -> {}
-                                            is Result.Progress -> {}
-                                            is Result.Success -> {
-                                                ioScope.launch{
-                                                    val message1 =
-                                                        chatMeUpDatabase.messageDao.getMessage(message.messageId)
-                                                            .apply {
-                                                                this.localThumbnailPath = localFilePath
-                                                            }
-                                                    chatMeUpDatabase.messageDao.upsertMessage(message1)
+                                //download Thumbnail
+                                if (message.messageType == MessageType.TEXT_IMAGE.toString()) {
+                                    val localFilePath =
+                                        "${message.chatID}/${message.messageID}_thumbnail.png"
+                                    message.serverThumbnailPath?.let { it1 ->
+                                        storageRepository.downloadChatThumbnail(
+                                            this.applicationContext,
+                                            it1,
+                                            localFilePath
+                                        ) { thumbnailResult ->
+                                            when (thumbnailResult) {
+                                                is Result.Error -> {}
+                                                Result.Loading -> {}
+                                                is Result.Progress -> {}
+                                                is Result.Success -> {
+                                                    ioScope.launch {
+                                                        val message1 =
+                                                            chatMeUpDatabase.messageDao.getMessage(
+                                                                message.messageID
+                                                            )
+                                                                .apply {
+                                                                    this.localThumbnailPath =
+                                                                        localFilePath
+                                                                }
+                                                        chatMeUpDatabase.messageDao.upsertMessage(
+                                                            message1
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
@@ -204,40 +221,104 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+            }catch(e:Exception){
+                Timber.tag(tag).e("Error $e")
             }
         }
     }
 
-    private fun loadAndObserveNewFriends(observer: FirebaseReferenceValueObserver){
-        Firebase.auth.uid?.let { myUserId ->
-            dbRepository.loadAndObserveFriends(myUserId, observer) { result ->
-                when (result) {
-                    is Result.Error -> {
-                        Timber.tag(tag).d("Unable to check and update Friends List")
-                    }
-                    Result.Loading -> {}
-                    is Result.Progress -> {}
-                    is Result.Success -> {
-                        result.data?.let { contactList ->
-                            ioScope.launch{
-                                for (contact in contactList) {
-                                    if (!chatMeUpDatabase.contactDao.contactExists(contact.userID)) {
-                                        appTaskManager.addTaskToQueue(AppTaskManager.Task.CreateNewContactFromUserID(this@MainActivity,contact.userID))
-                                        appTaskManager.addTaskToQueue(AppTaskManager.Task.CreateNewChatFromUserID(this@MainActivity, contact.userID))
-                                    }
-                                }
-                                val contacts = chatMeUpDatabase.contactDao.getContacts()
-                                for (contact in contacts) {
-                                    if (!contactList.contains(UserFriend(contact.userID)) && contact.userID != myUserId) {
-                                        appTaskManager.addTaskToQueue(AppTaskManager.Task.DeleteContactUsingUserID(contact.userID))
-                                        appTaskManager.addTaskToQueue(AppTaskManager.Task.DeleteChatUsingUserID(contact.userID))
-                                    }
-                                }
-                                loadAndObserveFriendsUserInfo()
+    private fun loadAndObserveContactsRemoved(observer: FirebaseReferenceChildObserver){
+        Firebase.auth.uid?.let{myUserId ->
+            try{
+                dbRepository.loadAndObserveContactsRemoved(
+                    myUserId,
+                    observer
+                ) { result ->
+                    when (result) {
+                        is Result.Error -> {
+                            Timber.tag(tag).e("Error loading Message")
+                        }
+
+                        Result.Loading -> {}
+                        is Result.Progress -> {}
+                        is Result.Success -> {
+                            result.data?.let {
+                                appTaskManager.addTaskToQueue(
+                                    AppTaskManager.Task.DeleteContactUsingUserID(it.userID)
+                                )
+                                appTaskManager.addTaskToQueue(
+                                    AppTaskManager.Task.DeleteChatUsingUserID(it.userID)
+                                )
+                                dbRepository.updateRemovedContacts(myUserId, it.userID)
                             }
                         }
                     }
                 }
+            }catch(e:Exception){
+                Timber.tag(tag).e("Error $e")
+            }
+        }
+    }
+
+    private fun loadAndObserveMessagesRemoved(observer: FirebaseReferenceChildObserver){
+        Firebase.auth.uid?.let{myUserId ->
+            try{
+                dbRepository.loadAndObserveMessagesRemoved(
+                    myUserId,
+                    observer
+                ) { result ->
+                    when (result) {
+                        is Result.Error -> {
+                            Timber.tag(tag).e("Error loading Message")
+                        }
+
+                        Result.Loading -> {}
+                        is Result.Progress -> {}
+                        is Result.Success -> {
+                            result.data?.let {
+                                appTaskManager.addTaskToQueue(
+                                    AppTaskManager.Task.DeleteMessageFromRoomDB(it.messageID)
+                                )
+                                dbRepository.updateRemovedMessages(myUserId, it.messageID)
+                            }
+                        }
+                    }
+                }
+            }catch(e:Exception){
+                Timber.tag(tag).e("Error $e")
+            }
+        }
+    }
+
+    private fun loadAndObserveAllNewContacts(observer: FirebaseReferenceChildObserver){
+        Firebase.auth.uid?.let{myUserId ->
+            try{
+                dbRepository.loadAndObserveNewContactsAdded(
+                    myUserId,
+                    observer
+                ) { result ->
+                    when (result) {
+                        is Result.Error -> {
+                            Timber.tag(tag).e("Error loading Message")
+                        }
+
+                        Result.Loading -> {}
+                        is Result.Progress -> {}
+                        is Result.Success -> {
+                            result.data?.let {
+                                appTaskManager.addTaskToQueue(
+                                    AppTaskManager.Task.CreateNewContactFromUserID(this, it.userID)
+                                )
+                                appTaskManager.addTaskToQueue(
+                                    AppTaskManager.Task.CreateNewChatFromUserID(this, it.userID)
+                                )
+                                dbRepository.updateNewContacts(myUserId, it.userID)
+                            }
+                        }
+                    }
+                }
+            }catch(e:Exception){
+                Timber.tag(tag).e("Error $e")
             }
         }
     }
@@ -246,26 +327,30 @@ class MainActivity : ComponentActivity() {
         ioScope.launch{
             friendsUserInfoReferenceValueObserverList = mutableListOf()
             val contacts = chatMeUpDatabase.contactDao.getContacts()
-            for (contact in contacts) {
-                val observer = FirebaseReferenceValueObserver()
-                friendsUserInfoReferenceValueObserverList.add(observer)
-                dbRepository.loadAndObserveUserInfo(contact.userID, observer) { result ->
-                    when (result) {
-                        is Result.Error -> {}
-                        Result.Loading -> {}
-                        is Result.Progress -> {}
-                        is Result.Success -> {
-                            result.data?.let {
-                                appTaskManager.addTaskToQueue(
-                                    AppTaskManager.Task.UpdateContactUsingUserInfo(
-                                        this@MainActivity,
-                                        it
+            try{
+                for (contact in contacts) {
+                    val observer = FirebaseReferenceValueObserver()
+                    friendsUserInfoReferenceValueObserverList.add(observer)
+                    dbRepository.loadAndObserveUserInfo(contact.userID, observer) { result ->
+                        when (result) {
+                            is Result.Error -> {}
+                            Result.Loading -> {}
+                            is Result.Progress -> {}
+                            is Result.Success -> {
+                                result.data?.let {
+                                    appTaskManager.addTaskToQueue(
+                                        AppTaskManager.Task.UpdateContactUsingUserInfo(
+                                            this@MainActivity,
+                                            it
+                                        )
                                     )
-                                )
+                                }
                             }
                         }
                     }
                 }
+            }catch (e: Exception){
+                Timber.tag(tag).e("Error $e")
             }
         }
     }

@@ -179,7 +179,7 @@ class LoginScreenViewModel @Inject constructor(
                                             ioScope.launch{
                                                 chatMeUpDatabase.messageDao.upsertMessage(
                                                     RoomMessage(
-                                                        messageId = chatID + message.messageID,
+                                                        messageID = chatID + message.messageID,
                                                         chatID = chatID,
                                                         messageText = message.text,
                                                         messageTime = message.epochTimeMs,
@@ -201,7 +201,7 @@ class LoginScreenViewModel @Inject constructor(
                                 ioScope.launch {
                                     chatMeUpDatabase.messageDao.upsertMessage(
                                         RoomMessage(
-                                            messageId = chatID + message.messageID,
+                                            messageID = chatID + message.messageID,
                                             chatID = chatID,
                                             messageText = message.text,
                                             messageTime = message.epochTimeMs,

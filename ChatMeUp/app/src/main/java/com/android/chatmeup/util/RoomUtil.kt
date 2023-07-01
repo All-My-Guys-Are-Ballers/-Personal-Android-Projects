@@ -8,7 +8,7 @@ fun firebaseMessageToRoomMessage(message: Message): com.android.chatmeup.data.db
     return com.android.chatmeup.data.db.room_db.entity.RoomMessage(
         chatID = convertTwoUserIDs(message.senderID, message.receiverID),
         messageStatus = MessageStatus.DELIVERED,
-        messageId = chatID + message.messageID,
+        messageID = message.messageID,
         messageTime = message.epochTimeMs,
         messageText = message.text,
         senderID = message.senderID,

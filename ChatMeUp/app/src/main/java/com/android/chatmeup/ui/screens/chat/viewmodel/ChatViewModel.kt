@@ -12,6 +12,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
+import com.android.chatmeup.AppTaskManager
 import com.android.chatmeup.data.DownloadState
 import com.android.chatmeup.data.Result
 import com.android.chatmeup.data.datastore.CmuDataStoreRepository
@@ -59,6 +60,7 @@ class ChatViewModel @AssistedInject constructor(
     @Assisted("otherUserId") private val otherUserID: String,
     private val cmuDataStoreRepository: CmuDataStoreRepository,
     private val chatMeUpDatabase: ChatMeUpDatabase,
+    val appTaskManager: AppTaskManager,
 ) : DefaultViewModel() {
     private val tag = Companion::class.java.simpleName
     private val dbRepository: DatabaseRepository = DatabaseRepository()
@@ -66,13 +68,9 @@ class ChatViewModel @AssistedInject constructor(
 
     private val _otherUser = chatMeUpDatabase.contactDao.getContactFlow(otherUserID).stateIn(viewModelScope, SharingStarted.WhileSubscribed(), RoomContact(otherUserID))
     private val _chatInfo: MutableLiveData<ChatInfo> = MutableLiveData()
-//    private val _addedMessage = MutableLiveData<Message>()
-//    private val _updatedMessageInfo = MutableLiveData<Message>()
     private val _viewState = MutableStateFlow(ChatViewState())
     private val _chatMediaListMap = MutableStateFlow(HashMap<String, DownloadState>())
 
-//    private val _downloadProgress = MutableStateFlow(0.0)
-//    private val _addedDownloadItem = MutableLiveData("")
     private val _downloadQueue = MutableStateFlow<Queue<DownloadQueueData>>(LinkedList())
     private val _downloadInProgress = MutableStateFlow(false)
 
@@ -91,10 +89,10 @@ class ChatViewModel @AssistedInject constructor(
         ioScope.launch{
             for (item in messageList) {
                 if (item.messageType == MessageType.TEXT_IMAGE.toString()) {
-                    if (!_chatMediaListMap.value.contains(item.messageId)) {
-                        if (item.localFilePath?.isNotBlank() == true) _chatMediaListMap.value[item.messageId] =
+                    if (!_chatMediaListMap.value.contains(item.messageID)) {
+                        if (item.localFilePath?.isNotBlank() == true) _chatMediaListMap.value[item.messageID] =
                             DownloadState.Downloaded
-                        else _chatMediaListMap.value[item.messageId] = DownloadState.NotDownloaded
+                        else _chatMediaListMap.value[item.messageID] = DownloadState.NotDownloaded
                     }
                 }
             }
@@ -250,7 +248,7 @@ class ChatViewModel @AssistedInject constructor(
             ioScope.launch {
                 //update message Table
                 val roomMessage = com.android.chatmeup.data.db.room_db.entity.RoomMessage(
-                    messageId = messageID,
+                    messageID = messageID,
                     messageText = messageText.trim(),
                     messageTime = messageTime,
                     senderID = myUserID,

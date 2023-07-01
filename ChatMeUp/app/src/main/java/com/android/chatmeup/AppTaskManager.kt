@@ -13,6 +13,7 @@ import com.android.chatmeup.data.db.room_db.ChatMeUpDatabase
 import com.android.chatmeup.data.db.room_db.data.MessageType
 import com.android.chatmeup.data.db.room_db.entity.RoomChat
 import com.android.chatmeup.data.db.room_db.entity.RoomContact
+import com.android.chatmeup.data.db.room_db.entity.RoomMessage
 import com.android.chatmeup.util.convertTwoUserIDs
 import com.android.chatmeup.util.firebaseMessageToRoomMessage
 import com.google.firebase.auth.ktx.auth
@@ -127,14 +128,20 @@ class AppTaskManager @Inject constructor(private val chatMeUpDatabase: ChatMeUpD
                 is Task.CreateNewRoomMessageFromFBMessage -> {
                     createNewRoomMessageFromFBMessage(task.context, task.message)
                 }
-                is Task.DeleteChatUsingUserID -> {
+                is Task.DeleteChatUsingChatID -> {
                     deleteChatUsingChatID(task.chatID)
+                }
+                is Task.DeleteChatUsingUserID -> {
+                    deleteChatUsingChatID(task.userID)
                 }
                 is Task.DeleteContactUsingUserID -> {
                     deleteContactUsingContactID(task.userID)
                 }
-                is Task.DeleteMessageUsingMessageID -> {
-                    deleteMessageUsingMessageID(task.chatID, task.chatID + task.timeStamp)
+                is Task.DeleteMessage -> {
+                    deleteMessage(task.otherUserID, task.roomMessage)
+                }
+                is Task.DeleteMessageFromRoomDB -> {
+                    deleteMessageFromRoomDB(task.messageID)
                 }
                 is Task.LoadMessagesUsingChatID ->{
                     loadMessagesUsingChatID(task.context, task.chatID)
@@ -264,6 +271,7 @@ class AppTaskManager @Inject constructor(private val chatMeUpDatabase: ChatMeUpD
             return
         }
         dbRepository.updateNewFriend(UserFriend(myUserID), UserFriend(userID))
+        dbRepository.pushNewContact(userID, myUserID)
         val newChat = Chat().apply {
             info.id = convertTwoUserIDs(myUserID, userID)
             lastMessage = Message(senderID = myUserID, seen = false, text = "Say hello!")
@@ -342,6 +350,7 @@ class AppTaskManager @Inject constructor(private val chatMeUpDatabase: ChatMeUpD
             return
         }
         addTaskToQueue(Task.LoadMessagesUsingChatID(context, convertTwoUserIDs(myUserID, userInfo.id)))
+        addTaskToQueue(Task.UpdateRoomChatFromFBChat(convertTwoUserIDs(myUserID, userInfo.id)))
         ioScope.launch {
             chatMeUpDatabase.chatDao.upsertChat(
                 RoomChat(
@@ -414,29 +423,28 @@ class AppTaskManager @Inject constructor(private val chatMeUpDatabase: ChatMeUpD
     private fun createNewRoomMessageFromFBMessage(context: Context, message: Message){
         taskInProgressState = true
         val chatID = convertTwoUserIDs(message.senderID, message.receiverID)
-        val messageID = chatID+message.messageID
-        if(message.messageType == MessageType.TEXT_IMAGE.toString()){
-            val localFilePath = "${chatID}/${messageID}.png"
-            addDownloadTask(
-                context = context,
-                downloadTask = DownloadTask(
-                    url = message.thumbnailUrl,
-                    localFilePath = "${chatID}/${messageID}.png",
-                    shouldRetry = true,
-                    onDone = {
-                        ioScope.launch{
-                            val roomMessage = firebaseMessageToRoomMessage(message)
-                            chatMeUpDatabase.messageDao.upsertMessage(roomMessage.copy(localFilePath = localFilePath))
-                        }
-                    }
-                ),
-            )
-            onTaskCompleted()
-            return
-        }
+        val messageID = message.messageID
+
         ioScope.launch{
             val roomMessage = firebaseMessageToRoomMessage(message)
             chatMeUpDatabase.messageDao.upsertMessage(roomMessage)
+            if(message.messageType == MessageType.TEXT_IMAGE.toString()){
+                val localFilePath = "${chatID}/${messageID}.png"
+                addDownloadTask(
+                    context = context,
+                    downloadTask = DownloadTask(
+                        url = message.thumbnailUrl,
+                        localFilePath = "${chatID}/${messageID}.png",
+                        shouldRetry = true,
+                        onDone = {
+                            ioScope.launch{
+                                chatMeUpDatabase.messageDao.upsertMessage(roomMessage.copy(localFilePath = localFilePath))
+                            }
+                        }
+                    ),
+                )
+
+            }
             onTaskCompleted()
         }
     }
@@ -445,13 +453,27 @@ class AppTaskManager @Inject constructor(private val chatMeUpDatabase: ChatMeUpD
         dbRepository.removeChat(chatID)
         dbRepository.removeMessages(chatID)
         ioScope.launch {
-            if(!chatMeUpDatabase.chatDao.chatExists(chatID)) {
+            try{
+                if (!chatMeUpDatabase.chatDao.chatExists(chatID)) {
+                    onTaskCompleted()
+                    return@launch
+                }
+            }catch (e: Exception){
+                Timber.tag(tag).e("Error $e")
                 onTaskCompleted()
                 return@launch
             }
             val chat = chatMeUpDatabase.chatDao.getChat(chatID)
             chatMeUpDatabase.chatDao.deleteChat(chat)
-            if(!chatMeUpDatabase.messageDao.messagesExistsInChat(chatID)) {
+        }
+        ioScope.launch {
+            try{
+                if (!chatMeUpDatabase.messageDao.messagesExistsInChat(chatID)) {
+                    onTaskCompleted()
+                    return@launch
+                }
+            }catch (e: Exception){
+                Timber.tag(tag).e("Error $e")
                 onTaskCompleted()
                 return@launch
             }
@@ -465,6 +487,17 @@ class AppTaskManager @Inject constructor(private val chatMeUpDatabase: ChatMeUpD
             }
         }
     }
+    private fun deleteChatUsingUserID(userID: String){
+        taskInProgressState = true
+        val myUserID = Firebase.auth.uid
+        if(myUserID == null){
+            onTaskCompleted()
+            return
+        }
+        val chatID = convertTwoUserIDs(myUserID, userID)
+        addTaskToQueue(Task.DeleteChatUsingChatID(chatID))
+        onTaskCompleted()
+    }
     private fun deleteContactUsingContactID(userID: String){
         taskInProgressState = true
         val myUserID = Firebase.auth.uid
@@ -473,21 +506,47 @@ class AppTaskManager @Inject constructor(private val chatMeUpDatabase: ChatMeUpD
             return
         }
         ioScope.launch {
-            if(!chatMeUpDatabase.contactDao.contactExists(userID)) {
+            dbRepository.removeFriend(myUserID, userID)
+            try{
+                if (!chatMeUpDatabase.contactDao.contactExists(userID)) {
+                    onTaskCompleted()
+                    return@launch
+                }
+            }catch (e:Exception){
+                Timber.tag(tag).e("Error $e")
                 onTaskCompleted()
                 return@launch
             }
             val contact = chatMeUpDatabase.contactDao.getContact(userID)
             chatMeUpDatabase.contactDao.deleteContact(contact)
             dbRepository.removeFriend(myUserID, userID)
+            dbRepository.removeContact(userID, myUserID)
             onTaskCompleted()
         }
     }
-    private fun deleteMessageUsingMessageID(chatID: String, messageID: String){
+    private fun deleteMessage(otherUserID: String, roomMessage: RoomMessage){
         taskInProgressState = true
-        dbRepository.removeMessage(chatID, messageID)
+        val myUserID = Firebase.auth.uid
+        if(myUserID == null) {
+            onTaskCompleted()
+            return
+        }
+        dbRepository.removeMessage(otherUserID,roomMessage.chatID, roomMessage.messageID)
         ioScope.launch {
-            if(!chatMeUpDatabase.messageDao.messageExists(chatID)) {
+            chatMeUpDatabase.messageDao.deleteMessage(roomMessage)
+            onTaskCompleted()
+        }
+    }
+
+    private fun deleteMessageFromRoomDB(messageID: String){
+        ioScope.launch{
+            try {
+                if (!chatMeUpDatabase.messageDao.messageExists(messageID)) {
+                    onTaskCompleted()
+                    return@launch
+                }
+            } catch (e: Exception) {
+                Timber.tag(tag).e("Error $e")
                 onTaskCompleted()
                 return@launch
             }
@@ -525,9 +584,15 @@ class AppTaskManager @Inject constructor(private val chatMeUpDatabase: ChatMeUpD
         }
         dbRepository.updateUserStatus(myUserID, about)
         ioScope.launch {
-            val contact = chatMeUpDatabase.contactDao.getContact(myUserID)
-            chatMeUpDatabase.contactDao.upsertContact(contact.copy(aboutStr = about))
-            onTaskCompleted()
+            try{
+                val contact = chatMeUpDatabase.contactDao.getContact(myUserID)
+                chatMeUpDatabase.contactDao.upsertContact(contact.copy(aboutStr = about))
+                onTaskCompleted()
+            }catch (e:Exception){
+                Timber.tag(tag).e("Error $e")
+                onTaskCompleted()
+                return@launch
+            }
         }
     }
     private fun updateChatFromUserInfoUsingUserID(context: Context, userID: String){
@@ -564,17 +629,24 @@ class AppTaskManager @Inject constructor(private val chatMeUpDatabase: ChatMeUpD
             return
         }
         ioScope.launch {
-            if(chatMeUpDatabase.chatDao.chatExists(convertTwoUserIDs(myUserID, it.id))) {
-                val chat = chatMeUpDatabase.chatDao.getChat(convertTwoUserIDs(myUserID, it.id))
-                chatMeUpDatabase.chatDao.upsertChat(chat.copy(
-                    displayName = it.displayName,
-                    onlineProfilePhotoPath = it.profileImageUrl
-                ))
+            try{
+                if (chatMeUpDatabase.chatDao.chatExists(convertTwoUserIDs(myUserID, it.id))) {
+                    val chat = chatMeUpDatabase.chatDao.getChat(convertTwoUserIDs(myUserID, it.id))
+                    chatMeUpDatabase.chatDao.upsertChat(
+                        chat.copy(
+                            displayName = it.displayName,
+                            onlineProfilePhotoPath = it.profileImageUrl
+                        )
+                    )
+                } else {
+                    taskQueue.add(Task.CreateNewChatFromUserInfo(context, it))
+                }
+                onTaskCompleted()
+            }catch (e: Exception){
+                Timber.tag(tag).e("Error $e")
+                onTaskCompleted()
+                return@launch
             }
-            else {
-                taskQueue.add(Task.CreateNewChatFromUserInfo(context, it))
-            }
-            onTaskCompleted()
         }
     }
     private fun updateContactUsingUserID(context: Context,userID: String){
@@ -597,8 +669,14 @@ class AppTaskManager @Inject constructor(private val chatMeUpDatabase: ChatMeUpD
     private fun updateContactUsingUserInfo(context: Context,it: UserInfo){
         taskInProgressState = true
         ioScope.launch{
-            if (!chatMeUpDatabase.contactDao.contactExists(it.id)) {
-                taskQueue.add(Task.CreateNewContactFromUserInfo(context,it))
+            try{
+                if (!chatMeUpDatabase.contactDao.contactExists(it.id)) {
+                    taskQueue.add(Task.CreateNewContactFromUserInfo(context, it))
+                    onTaskCompleted()
+                    return@launch
+                }
+            }catch (e: java.lang.Exception){
+                Timber.tag(tag).e("Error $e")
                 onTaskCompleted()
                 return@launch
             }
@@ -662,9 +740,15 @@ class AppTaskManager @Inject constructor(private val chatMeUpDatabase: ChatMeUpD
         }
         dbRepository.updateDisplayName(myUserID, displayName)
         ioScope.launch {
-            val contact = chatMeUpDatabase.contactDao.getContact(myUserID)
-            chatMeUpDatabase.contactDao.upsertContact(contact.copy(displayName = displayName))
-            onTaskCompleted()
+            try{
+                val contact = chatMeUpDatabase.contactDao.getContact(myUserID)
+                chatMeUpDatabase.contactDao.upsertContact(contact.copy(displayName = displayName))
+                onTaskCompleted()
+            }catch(e:Exception){
+                Timber.tag(tag).e("Error $e")
+                onTaskCompleted()
+                return@launch
+            }
         }
     }
     private fun updateOnlineStatus(isOnline: Boolean){
@@ -676,9 +760,16 @@ class AppTaskManager @Inject constructor(private val chatMeUpDatabase: ChatMeUpD
         }
         dbRepository.updateOnlineStatus(myUserID, isOnline)
         ioScope.launch {
-            val contact = chatMeUpDatabase.contactDao.getContact(myUserID)
-            chatMeUpDatabase.contactDao.upsertContact(contact.copy(isOnline = isOnline))
-            onTaskCompleted()
+            try{
+                val contact = chatMeUpDatabase.contactDao.getContact(myUserID)
+                chatMeUpDatabase.contactDao.upsertContact(contact.copy(isOnline = isOnline))
+                onTaskCompleted()
+            }
+            catch (e: Exception){
+                Timber.tag(tag).e("Error $e")
+                onTaskCompleted()
+                return@launch
+            }
         }
     }
     private fun updateRoomChatFromFBChat(chatID: String){
@@ -687,19 +778,27 @@ class AppTaskManager @Inject constructor(private val chatMeUpDatabase: ChatMeUpD
             if(result is Result.Success){
                 result.data?.let{
                     ioScope.launch {
-                        if(!chatMeUpDatabase.chatDao.chatExists(chatID)){
+                        try{
+                            if (!chatMeUpDatabase.chatDao.chatExists(chatID)) {
+                                onTaskCompleted()
+                                return@launch
+                            }
+                            val chat = chatMeUpDatabase.chatDao.getChat(chatID)
+                            chatMeUpDatabase.chatDao.upsertChat(
+                                chat.copy(
+                                    lastMessageSenderID = it.lastMessage.senderID,
+                                    lastMessageText = it.lastMessage.text,
+                                    lastMessageTime = it.lastMessage.epochTimeMs,
+                                    no_of_unread_messages = it.info.no_of_unread_messages,
+                                    messageType = enumValueOf(it.lastMessage.messageType)
+                                )
+                            )
+                            onTaskCompleted()
+                        }catch (e: Exception){
+                            Timber.tag(tag).e("Error $e")
                             onTaskCompleted()
                             return@launch
                         }
-                        val chat = chatMeUpDatabase.chatDao.getChat(chatID)
-                        chatMeUpDatabase.chatDao.upsertChat(chat.copy(
-                            lastMessageSenderID = it.lastMessage.senderID,
-                            lastMessageText = it.lastMessage.text,
-                            lastMessageTime = it.lastMessage.epochTimeMs,
-                            no_of_unread_messages = it.info.no_of_unread_messages,
-                            messageType = enumValueOf(it.lastMessage.messageType)
-                        ))
-                        onTaskCompleted()
                     }
                 }
             }
@@ -745,15 +844,21 @@ class AppTaskManager @Inject constructor(private val chatMeUpDatabase: ChatMeUpD
             val context: Context,
             val message: Message
         ): Task()
-        data class DeleteChatUsingUserID(
+        data class DeleteChatUsingChatID(
             val chatID: String
+        ): Task()
+        data class DeleteChatUsingUserID(
+            val userID: String
         ): Task()
         data class DeleteContactUsingUserID(
             val userID: String
         ): Task()
-        data class DeleteMessageUsingMessageID(
-            val timeStamp: String,
-            val chatID: String
+        data class DeleteMessage(
+            val otherUserID: String,
+            val roomMessage: RoomMessage,
+        ): Task()
+        data class DeleteMessageFromRoomDB(
+            val messageID: String
         ): Task()
         data class LoadMessagesUsingChatID(
             val context: Context,

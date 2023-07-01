@@ -12,6 +12,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -37,6 +38,8 @@ import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -62,6 +65,7 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import com.android.chatmeup.AppTaskManager
 import com.android.chatmeup.R
 import com.android.chatmeup.data.DownloadState
 import com.android.chatmeup.data.db.room_db.data.MessageType
@@ -81,12 +85,14 @@ import com.android.chatmeup.ui.screens.components.UploadImageScreen
 import com.android.chatmeup.ui.theme.neutral_disabled
 import com.android.chatmeup.ui.theme.seed
 import com.android.chatmeup.util.createTempImageFile
+import com.android.chatmeup.util.epochToDayMonthYear
 import com.android.chatmeup.util.epochToHoursAndMinutes
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.io.File
+import java.util.Date
 
 @OptIn(ExperimentalMaterialApi::class)
 @RequiresApi(Build.VERSION_CODES.O)
@@ -234,6 +240,11 @@ fun ChatScreen(
                 newPhotoUri = newPhotoURI,
                 context = context,
                 activity = activity,
+                onDeleteMessage = {
+                    viewModel.appTaskManager.addTaskToQueue(
+                        AppTaskManager.Task.DeleteMessage(otherUserId,it)
+                    )
+                }
             )
         }
         ChatState.UPLOAD_IMAGE -> {
@@ -303,6 +314,7 @@ fun ChatListScreen(
     context: Context,
     activity: Activity?,
     chatMediaListMap: HashMap<String, DownloadState>,
+    onDeleteMessage: (RoomMessage) -> Unit
 ){
     val scope = rememberCoroutineScope()
     ModalBottomSheetLayout(
@@ -358,8 +370,9 @@ fun ChatListScreen(
                                     myUserId = userId,
                                     roomMessage = roomMessageList[it],
                                     downloadState = if(roomMessageList[it].messageType == MessageType.TEXT_IMAGE.toString())
-                                        chatMediaListMap[roomMessageList[it].messageId]
-                                    else DownloadState.NotDownloaded
+                                        chatMediaListMap[roomMessageList[it].messageID]
+                                    else DownloadState.NotDownloaded,
+                                    onDeleteMessage = onDeleteMessage
                                 )
                             }
                         }
@@ -379,8 +392,10 @@ fun MessageItem(
     myUserId: String,
     roomMessage: RoomMessage,
     downloadState: DownloadState?,
+    onDeleteMessage: (RoomMessage) -> Unit
 ){
     val isSender = myUserId == roomMessage.senderID
+    val canDeleteMessage = (Date().time - roomMessage.messageTime)<86400000L //if message has lasted for 24 hours
     val onClick = {
         when (downloadState) {
             DownloadState.Downloaded -> {
@@ -394,7 +409,7 @@ fun MessageItem(
             DownloadState.NotDownloaded -> {
                 roomMessage.serverFilePath?.let {
                     viewModel.loadImage(context, activity,
-                        it, roomMessage.messageId)
+                        it, roomMessage.messageID)
                 }
             }
 
@@ -406,71 +421,86 @@ fun MessageItem(
             }
         }
     }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 5.dp),
-        horizontalArrangement = if(isSender) Arrangement.End else Arrangement.Start
-    ) {
-        Card(
-            shape = RoundedCornerShape(
-                topStart = 15.dp,
-                topEnd = 15.dp,
-                bottomStart = if(isSender) 15.dp else 0.dp,
-                bottomEnd = if(isSender) 0.dp else 15.dp
-            ),
+    Box{
+        var optionsExpanded by remember {
+            mutableStateOf(false)
+        }
+        val onDismissRequest = { optionsExpanded = false }
+        DropdownMenu(
+            expanded = if(canDeleteMessage)optionsExpanded else false,
+            onDismissRequest = onDismissRequest,
+        ) {
+            DropdownMenuItem(
+                text = { Text(text = "Delete Message") },
+                onClick = {
+                    onDeleteMessage(roomMessage)
+                    onDismissRequest()
+                }
+            )
+        }
+        Row(
             modifier = Modifier
-                .padding(
-                    start = if (isSender) 70.dp else 0.dp,
-                    end = if (!isSender) 70.dp else 0.dp
-                )
+                .fillMaxWidth()
+                .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
                 .combinedClickable(
                     onClick = {},
-                    onLongClick = {}
-                ),
-            colors = CardDefaults.cardColors(
-                containerColor = if(isSender) seed else MaterialTheme.colorScheme.background
-            ),
+                    onLongClick = {optionsExpanded = true}
+                )
+            ,
+            horizontalArrangement = if (isSender) Arrangement.End else Arrangement.Start
         ) {
-            Column(
-//                modifier = Modifier.padding(10.dp),
-                horizontalAlignment = if (isSender) Alignment.End else Alignment.Start
+            Card(
+                shape = RoundedCornerShape(
+                    topStart = 15.dp,
+                    topEnd = 15.dp,
+                    bottomStart = if (isSender) 15.dp else 0.dp,
+                    bottomEnd = if (isSender) 0.dp else 15.dp
+                ),
+                modifier = Modifier
+                    .padding(
+                        start = if (isSender) 70.dp else 0.dp,
+                        end = if (!isSender) 70.dp else 0.dp
+                    ),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isSender) seed else MaterialTheme.colorScheme.background
+                ),
             ) {
-                if(roomMessage.messageType == MessageType.TEXT_IMAGE.toString()){
-                    downloadState?.let {
-                        TextImage(
-                            modifier = Modifier.padding(5.dp),
-                            context = context,
-                            roomMessage = roomMessage,
-                            downloadState = it
-                        ) {
-                            onClick()
+                Column(
+//                modifier = Modifier.padding(10.dp),
+                    horizontalAlignment = if (isSender) Alignment.End else Alignment.Start
+                ) {
+                    if (roomMessage.messageType == MessageType.TEXT_IMAGE.toString()) {
+                        downloadState?.let {
+                            TextImage(
+                                modifier = Modifier.padding(5.dp),
+                                context = context,
+                                roomMessage = roomMessage,
+                                downloadState = it
+                            ) {
+                                onClick()
+                            }
                         }
                     }
-                }
-                if(roomMessage.messageText.isNotBlank()){
-                    Spacer(modifier = Modifier.height(5.dp))
+                    if (roomMessage.messageText.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(5.dp))
+                        Text(
+                            text = roomMessage.messageText,
+                            modifier = Modifier
+                                .align(Alignment.Start)
+                                .padding(horizontal = 10.dp),
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Left,
+                            color = if (isSender) Color.White else MaterialTheme.colorScheme.onBackground
+                        )
+                    }
                     Text(
-                        text = roomMessage.messageText,
-                        modifier = Modifier
-                            .align(Alignment.Start)
-                            .padding(horizontal = 10.dp),
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Left,
-                        color = if (isSender) Color.White else MaterialTheme.colorScheme.onBackground
+                        text = "${epochToHoursAndMinutes(roomMessage.messageTime)}•${epochToDayMonthYear(roomMessage.messageTime)}",
+                        modifier = Modifier.padding(horizontal = 10.dp),
+                        color = neutral_disabled,
+                        style = MaterialTheme.typography.labelSmall
                     )
+                    Spacer(modifier = Modifier.height(5.dp))
                 }
-                Text(
-                    text = "${epochToHoursAndMinutes(roomMessage.messageTime)}${
-                        if(isSender) {
-                            if(false) "•Read" else "•Sent"
-                        } else ""
-                    }",
-                    modifier = Modifier.padding(horizontal = 10.dp),
-                    color = neutral_disabled,
-                    style = MaterialTheme.typography.labelSmall
-                )
-                Spacer(modifier = Modifier.height(5.dp))
             }
         }
     }

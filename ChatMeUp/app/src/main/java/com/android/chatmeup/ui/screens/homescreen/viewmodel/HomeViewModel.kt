@@ -17,6 +17,7 @@ import com.android.chatmeup.data.db.firebase_db.remote.FirebaseReferenceValueObs
 import com.android.chatmeup.data.db.firebase_db.repository.AuthRepository
 import com.android.chatmeup.data.db.firebase_db.repository.DatabaseRepository
 import com.android.chatmeup.data.db.room_db.ChatMeUpDatabase
+import com.android.chatmeup.data.db.room_db.entity.RoomChat
 import com.android.chatmeup.data.db.room_db.entity.RoomContact
 import com.android.chatmeup.data.model.ChatWithUserInfo
 import com.android.chatmeup.ui.DefaultViewModel
@@ -24,7 +25,6 @@ import com.android.chatmeup.ui.cmutoast.CmuToast
 import com.android.chatmeup.ui.cmutoast.CmuToastDuration
 import com.android.chatmeup.ui.cmutoast.CmuToastStyle
 import com.android.chatmeup.util.addNewItem
-import com.android.chatmeup.util.clearDirectory
 import com.android.chatmeup.util.removeItem
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.io.File
 
 enum class HomeEventState{
     INIT,
@@ -86,10 +87,15 @@ class HomeViewModel @AssistedInject constructor(
     val ioScope = CoroutineScope(Dispatchers.IO + Job())
 
     val viewState = combine(_viewState, _myContact, _chatsList){viewState, myContact, chatsList->
-        viewState.copy(
-            myContact = myContact,
-            chatsList = chatsList
-        )
+        try{
+            viewState.copy(
+                myContact = myContact,
+                chatsList = chatsList
+            )
+        }catch (e: NullPointerException){
+            Timber.tag(tag).e("viewState not updated error $e")
+            viewState
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeViewState())
 
     init {
@@ -239,27 +245,39 @@ class HomeViewModel @AssistedInject constructor(
         dbRepository.loadUsers { result: Result<MutableList<User>> ->
             onResult(null, result)
             if (result is Result.Success) {
-                result.data?.forEach {
-                    if (it.info.email == email) {
-                        uid = it.info.id
-                        return@forEach
+                ioScope.launch{
+                    result.data?.forEach {
+                        if (it.info.email == email) {
+                            uid = it.info.id
+                            return@forEach
+                        }
                     }
-                }
-                if (uid.isNotBlank()){
-                    Timber.tag(tag).d("This is UID: $uid")
-                    dbRepository.updateNewNotification(uid, UserNotification(myUserId))
-                    onAddContactEventTriggered(
-                        AddContactEvents.Success,
-                        context, activity
-                    )
-                }
-                else {
-                    Timber.tag(tag).d("This is UID: $uid")
-                    onAddContactEventTriggered(
-                        AddContactEvents.Error,
-                        context, activity,
-                        errorMsg = "User does not have a ChatMeUp Account"
-                    )
+                    if (uid.isBlank()) {
+                        onAddContactEventTriggered(
+                            AddContactEvents.Error,
+                            context, activity,
+                            errorMsg = "User does not have a ChatMeUp Account"
+                        )
+                    } else if (chatMeUpDatabase.contactDao.contactExists(uid)) {
+                        onAddContactEventTriggered(
+                            AddContactEvents.Error,
+                            context, activity,
+                            errorMsg = "You already have this contact saved"
+                        )
+                    } else if (notificationListWithUserInfo.value?.find { it.id == uid } != null) {
+                        notificationListWithUserInfo.value?.find { it.id == uid }
+                            ?.let { acceptNotificationPressed(it) }
+                        onAddContactEventTriggered(
+                            AddContactEvents.Success,
+                            context, activity
+                        )
+                    } else {
+                        dbRepository.updateNewNotification(uid, UserNotification(myUserId))
+                        onAddContactEventTriggered(
+                            AddContactEvents.Success,
+                            context, activity
+                        )
+                    }
                 }
             }
             else if(result is Result.Error){
@@ -277,19 +295,26 @@ class HomeViewModel @AssistedInject constructor(
     fun logout(context: Context){
         authRepository.logoutUser()
         ioScope.launch {
-            chatMeUpDatabase.messageDao.deleteTable()
-            chatMeUpDatabase.chatDao.deleteTable()
-            chatMeUpDatabase.contactDao.deleteTable()
+            for (contact in chatMeUpDatabase.contactDao.getContacts()){
+                chatMeUpDatabase.contactDao.deleteContact(contact)
+                File(context.filesDir, contact.localProfilePhotoPath).delete()
+            }
+            for(chat in chatMeUpDatabase.chatDao.getAllChats()){
+                chatMeUpDatabase.chatDao.deleteChat(chat)
+                File(context.filesDir, chat.profilePhotoPath).delete()
+            }
+            for (message in chatMeUpDatabase.messageDao.getAllMessages()){
+                chatMeUpDatabase.messageDao.deleteMessage(message)
+                message.localThumbnailPath?.let { File(context.filesDir, it).delete() }
+                message.localFilePath?.let{ File(context.filesDir, it)}
+            }
+
         }
-        clearDirectory(context.filesDir)
-        clearDirectory(context.cacheDir)
-        clearDirectory(context.codeCacheDir)
-        clearDirectory(context.dataDir)
     }
 
     data class HomeViewState(
         val myContact: RoomContact = RoomContact(""),
-        val chatsList: List<com.android.chatmeup.data.db.room_db.entity.RoomChat> = emptyList()
+        val chatsList: List<RoomChat> = emptyList()
     )
     sealed class HomeEvents(){
         object ChatListEvent: HomeEvents()

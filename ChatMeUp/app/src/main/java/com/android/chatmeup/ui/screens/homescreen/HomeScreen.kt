@@ -17,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.NotificationsActive
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.material3.*
@@ -81,7 +80,7 @@ fun HomeScreen(
     }
     val viewModel: HomeViewModel = homeViewModelProvider(
         factory = factory,
-        myUserID = myUserID
+        myUserID = myUserID,
     )
 
     val viewState by viewModel.viewState.collectAsState()
@@ -96,7 +95,7 @@ fun HomeScreen(
 
     var selectedImageFile by rememberSaveable { mutableStateOf(File(context.filesDir, "")) }
 
-    val pagerState = rememberPagerState(1)
+    val pagerState = rememberPagerState(0)
 
     val scope = rememberCoroutineScope()
 
@@ -186,8 +185,8 @@ fun HomeScreen(
                     }
                 },
                 onConfirmLogout = {
-                    viewModel.logout(context)
                     onNavigateToLogin()
+                    viewModel.logout(context = context)
                 },
                 onDismissLogout = {
                     scope.launch {
@@ -290,8 +289,6 @@ fun HomeScreen(
                         context = context,
                         searchTextValue = searchText,
                         onSearchTextValueChanged = { searchText = it },
-                        list = viewState.chatsList,
-                        myUserId = viewModel.myUserId,
                         onProfileImageClicked = { localPhotoPath, displayName ->
                             selectedImageTitle = displayName
                             selectedImageFile = File(context.filesDir, localPhotoPath)
@@ -306,7 +303,18 @@ fun HomeScreen(
                                 }
                             }
                         },
+                        list = viewState.chatsList,
+                        myUserId = viewModel.myUserId,
                         onNavigateToChat = onNavigateToChat,
+                        onDeleteChat =
+                        {chatID, userID ->
+                            viewModel.appTaskManager.addTaskToQueue(
+                                AppTaskManager.Task.DeleteChatUsingChatID(chatID)
+                            )
+                            viewModel.appTaskManager.addTaskToQueue(
+                                AppTaskManager.Task.DeleteContactUsingUserID(userID)
+                            )
+                        },
                     )
 
                     1 -> MoreScreen(
@@ -314,7 +322,7 @@ fun HomeScreen(
                         context = context,
                         myContact = viewState.myContact,
                         onSignOutClicked = {
-                            currentBottomSheet = BottomSheetScreen.ConfirmLogout
+                            currentBottomSheet = BottomSheetScreen.ConfirmInfo("Please note that if you logout All your information will be deleted from this device. Will you still like to logout?")
                             scope.launch {
                                 modalBottomSheetState.show()
                             }
@@ -338,7 +346,8 @@ fun ChatsScreen(
     onProfileImageClicked: (String, String) -> Unit,
     list: List<RoomChat>,
     myUserId: String,
-    onNavigateToChat: (String) -> Unit
+    onNavigateToChat: (String) -> Unit,
+    onDeleteChat: (String, String) -> Unit
 ){
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -357,6 +366,7 @@ fun ChatsScreen(
                     myUserId = myUserId,
                     onNavigateToChat = onNavigateToChat,
                     onProfileImageClicked = onProfileImageClicked,
+                    onDeleteChat = onDeleteChat
                 )
             }
         }
@@ -382,12 +392,12 @@ fun MoreScreen(
                 onNavigateToEditProfile()
             }
             Spacer(modifier = Modifier.height(25.dp))
-            MoreItem() {
-                
-            }
-            MoreItem(Icons.Default.Security, "Security") {
-                
-            }
+//            MoreItem() {
+//
+//            }
+//            MoreItem(Icons.Default.Security, "Security") {
+//
+//            }
             MoreItem(Icons.Default.Logout, "Sign Out") {
                 onSignOutClicked()
             }
@@ -402,20 +412,21 @@ fun ChatList(
     list: List<RoomChat>,
     myUserId: String,
     onNavigateToChat: (String) -> Unit,
+    onDeleteChat: (String, String) -> Unit,
     onProfileImageClicked: (String, String) -> Unit
 ){
     LazyColumn(
-        modifier = Modifier.padding(start = 25.dp, end = 25.dp),
-//        verticalArrangement = Arrangement.spacedBy(25.dp)
+        modifier = Modifier,
     ){
         repeat(list.size){
             item {
                 ChatListItem(
-                    modifier = Modifier.padding(vertical = 10.dp),
+                    modifier = Modifier,
                     context = context,
                     myUserId = myUserId,
                     item = list[it],
                     onNavigateToChat = onNavigateToChat,
+                    onDeleteChat = onDeleteChat
                 ) {
                     onProfileImageClicked(list[it].profilePhotoPath, list[it].displayName)
                 }

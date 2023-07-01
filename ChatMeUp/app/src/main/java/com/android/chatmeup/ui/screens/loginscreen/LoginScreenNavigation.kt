@@ -10,7 +10,7 @@ import com.android.chatmeup.navigation.CmuNavigationDestination
 object LoginDestination : CmuNavigationDestination {
     override val route = "login_route"
     override val destination = "login_destination"
-    override val shouldPopStack = false
+    override val shouldPopStack = true
 }
 
 fun NavGraphBuilder.loginGraph(

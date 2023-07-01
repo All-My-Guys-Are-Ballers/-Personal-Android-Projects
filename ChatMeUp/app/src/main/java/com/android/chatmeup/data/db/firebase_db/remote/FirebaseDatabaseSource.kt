@@ -221,6 +221,14 @@ class FirebaseDataSource {
         refToPath("messages/$chatID/${message.messageID}").setValue(message)
         refToPath("users/${userID}/newMessages/${message.messageID}").setValue(message)
     }
+
+    fun pushNewContact(otherUserID: String, myUserID: String) {
+        refToPath("users/${otherUserID}/newContacts/${myUserID}").setValue(UserFriend(myUserID))
+    }
+
+    fun removeContact(otherUserID: String, myUserID: String) {
+        refToPath("users/${otherUserID}/removeContacts/${myUserID}").setValue(UserFriend(myUserID))
+    }
     //endregion
 
     //region Remove
@@ -245,12 +253,25 @@ class FirebaseDataSource {
         refToPath("messages/$messagesID").setValue(null)
     }
 
-    fun removeMessage(chatID: String, messageID: String) {
+    fun removeMessage(otherUserID: String, chatID: String, messageID: String) {
         refToPath("messages/$chatID/$messageID").setValue(null)
+        refToPath("users/$otherUserID/removeMessages/$messageID").setValue(Message(messageID = messageID))
     }
 
     fun removeNewMessages(userID: String, messageID: String) {
         refToPath("users/$userID/newMessages/$messageID").setValue(null)
+    }
+
+    fun updateRemovedMessages(userID: String, messageID: String) {
+        refToPath("users/$userID/removeMessages/$messageID").setValue(null)
+    }
+
+    fun updateNewContacts(userID: String, otherUserID: String){
+        refToPath("users/$userID/newContacts/$otherUserID").setValue(null)
+    }
+
+    fun updateRemovedContacts(userID: String, otherUserID: String){
+        refToPath("users/$userID/removedContacts/$otherUserID").setValue(null)
     }
 
     //endregion
@@ -354,6 +375,21 @@ class FirebaseDataSource {
     fun <T> attachNewMessagesObserver(resultClassName: Class<T>, userID: String, refObs: FirebaseReferenceChildObserver, b: ((Result<T>) -> Unit)) {
         val listener = attachChildListenerToBlock(resultClassName, b)
         refObs.start(listener, refToPath("users/$userID/newMessages"))
+    }
+
+    fun <T> attachNewContactsObserver(resultClassName: Class<T>, userID: String, refObs: FirebaseReferenceChildObserver, b: ((Result<T>) -> Unit)) {
+        val listener = attachChildListenerToBlock(resultClassName, b)
+        refObs.start(listener, refToPath("users/$userID/newContacts"))
+    }
+
+    fun <T> attachRemoveContactsObserver(resultClassName: Class<T>, userID: String, refObs: FirebaseReferenceChildObserver, b: ((Result<T>) -> Unit)) {
+        val listener = attachChildListenerToBlock(resultClassName, b)
+        refObs.start(listener, refToPath("users/$userID/removeContacts"))
+    }
+
+    fun <T> attachRemovedMessagesObserver(resultClassName: Class<T>, userID: String, refObs: FirebaseReferenceChildObserver, b: ((Result<T>) -> Unit)) {
+        val listener = attachChildListenerToBlock(resultClassName, b)
+        refObs.start(listener, refToPath("users/$userID/removeMessages"))
     }
 
     fun <T> attachChatObserver(resultClassName: Class<T>, chatID: String, refObs: FirebaseReferenceValueObserver, b: ((Result<T>) -> Unit)) {
