@@ -11,6 +11,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -90,9 +91,12 @@ import com.android.chatmeup.ui.screens.editprofile.components.ProfileItem
 import com.android.chatmeup.ui.screens.editprofile.components.UploadImageScreen
 import com.android.chatmeup.ui.screens.editprofile.viewmodel.EditProfileState
 import com.android.chatmeup.ui.screens.editprofile.viewmodel.EditProfileViewModel
+import com.android.chatmeup.ui.theme.md_theme_dark_background
+import com.android.chatmeup.ui.theme.md_theme_light_background
 import com.android.chatmeup.ui.theme.neutral_disabled
 import com.android.chatmeup.ui.theme.seed
 import com.android.chatmeup.util.createTempImageFile
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -119,6 +123,8 @@ fun EditProfileScreen(
     val isUpdatingProfileImage by editProfileViewModel.isUpdatingProfileImage.collectAsState()
 
     val scope = rememberCoroutineScope()
+    val systemUiController = rememberSystemUiController()
+
 
     val profileImageUri = Uri.parse("")
 
@@ -281,6 +287,20 @@ fun EditProfileScreen(
         imagePainter.onRemembered()
     }
 
+    val isDarkTheme = isSystemInDarkTheme()
+    LaunchedEffect(modalBottomSheetState.isVisible){
+        if(!(modalBottomSheetState.isVisible &&
+                    (currentBottomSheet is BottomSheetScreen.ProfileImagePage || currentBottomSheet is BottomSheetScreen.ConfirmUploadImageOption))){
+            systemUiController.setSystemBarsColor(
+                color = if (isDarkTheme) md_theme_dark_background else md_theme_light_background,
+                darkIcons = !isDarkTheme
+            )
+        }
+        else{
+            systemUiController.setSystemBarsColor(Color.Black, darkIcons = false)
+        }
+    }
+
     ModalBottomSheetLayout(
         sheetContent = {
         SheetLayout(
@@ -290,6 +310,12 @@ fun EditProfileScreen(
             context = context,
             activity = activity,
             displayName = displayName,
+            onCloseImagePage = {
+                systemUiController.setSystemBarsColor(
+                    color = if (isDarkTheme) md_theme_dark_background else md_theme_light_background,
+                    darkIcons = !isDarkTheme
+                )
+            },
             onDisplayNameChanged =
             {
                 if(MAX_DISPLAY_NAME_LENGTH - displayName.length > 0){
@@ -452,7 +478,10 @@ fun EditProfileScreen(
                                 shape = CircleShape,
                                 onClick = {
                                     if (profileImageFile != null && profileImageFile?.exists() == true) {
-                                        profileImageFile?.let{ onViewProfileImageClicked(it) }
+                                        profileImageFile?.let{
+                                            systemUiController.setSystemBarsColor(Color.Black, darkIcons = false)
+                                            onViewProfileImageClicked(it)
+                                        }
                                     } else {
                                         onUpdateProfileImageClicked()
                                     }
@@ -719,6 +748,7 @@ fun SheetLayout(
     onUploadFromStorageClicked: () -> Unit,
     onConfirmProfileImage: (Any) -> Unit,
     onRotateProfileImage: () -> Unit,
+    onCloseImagePage: () -> Unit
 ) {
     when(currentScreen){
         BottomSheetScreen.EditDisplayName -> {
@@ -741,6 +771,7 @@ fun SheetLayout(
                 title = "Profile photo",
                 imageObj = currentScreen.imageObj,
                 onBackClick = {
+                    onCloseImagePage()
                     scope.launch {
                         modalBottomSheetState.hide()
                     }
@@ -778,6 +809,7 @@ fun SheetLayout(
                     onConfirmImage = { onConfirmProfileImage(imageObj) },
                     onClickRotate = onRotateProfileImage,
                     onDismiss = {
+                        onCloseImagePage()
                         scope.launch {
                             modalBottomSheetState.hide()
                         }

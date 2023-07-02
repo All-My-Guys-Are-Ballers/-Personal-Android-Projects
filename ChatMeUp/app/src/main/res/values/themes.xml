@@ -2,7 +2,8 @@
 <resources>
 
     <style name="Theme.ChatMeUp" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:statusBarColor">@color/purple_700</item>
+        <item name="android:statusBarColor">?android:colorBackground</item>
+        <item name="android:windowBackground">@drawable/ic_launcher_foreground</item>
     </style>
 
     <style name="ChatMeUpSlideUpAndDownBottomDialogAnimation8">

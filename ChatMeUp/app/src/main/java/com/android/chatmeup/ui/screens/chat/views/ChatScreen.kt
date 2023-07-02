@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -60,6 +61,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextAlign
@@ -78,15 +80,19 @@ import com.android.chatmeup.ui.screens.chat.data.ChatState
 import com.android.chatmeup.ui.screens.chat.viewmodel.ChatViewModel
 import com.android.chatmeup.ui.screens.chat.viewmodel.chatViewModelProvider
 import com.android.chatmeup.ui.screens.components.CmuOutlinedTextField
+import com.android.chatmeup.ui.screens.components.ImagePage
 import com.android.chatmeup.ui.screens.components.ProfilePicture
 import com.android.chatmeup.ui.screens.components.TextImage
 import com.android.chatmeup.ui.screens.components.UploadFileOptionDialog
 import com.android.chatmeup.ui.screens.components.UploadImageScreen
+import com.android.chatmeup.ui.theme.md_theme_dark_background
+import com.android.chatmeup.ui.theme.md_theme_light_background
 import com.android.chatmeup.ui.theme.neutral_disabled
 import com.android.chatmeup.ui.theme.seed
 import com.android.chatmeup.util.createTempImageFile
 import com.android.chatmeup.util.epochToDayMonthYear
 import com.android.chatmeup.util.epochToHoursAndMinutes
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.launch
@@ -112,6 +118,7 @@ fun ChatScreen(
         onBackClicked()
         return
     }
+    val systemUiController = rememberSystemUiController()
     val viewModel = chatViewModelProvider(
         chatId = chatId,
         myUserId = myUserID,
@@ -130,8 +137,10 @@ fun ChatScreen(
     val lazyListState by viewModel.lazyListState.collectAsState()
 
     val modalBottomSheetState =
-        rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden,
-            confirmValueChange = { it != ModalBottomSheetValue.HalfExpanded }
+        rememberModalBottomSheetState(
+            initialValue = ModalBottomSheetValue.Hidden,
+            confirmValueChange = {it != ModalBottomSheetValue.HalfExpanded},
+            skipHalfExpanded = true
         )
 
     var newPhotoURI: Uri? by rememberSaveable {
@@ -142,8 +151,13 @@ fun ChatScreen(
         mutableStateOf(ChatState.CHAT)
     }
 
-
     val scope = rememberCoroutineScope()
+
+    var currentBottomScreen:ChatBottomSheetScreen by remember {
+        mutableStateOf(ChatBottomSheetScreen.UploadFileOptionDialog)
+    }
+
+    val isDarkTheme = isSystemInDarkTheme()
 
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
@@ -216,6 +230,17 @@ fun ChatScreen(
         }
     }
 
+    LaunchedEffect(modalBottomSheetState.isVisible){
+        if(!(modalBottomSheetState.isVisible && currentBottomScreen is ChatBottomSheetScreen.LoadImagePage)){
+            systemUiController.setSystemBarsColor(
+                color = if (isDarkTheme) md_theme_dark_background else md_theme_light_background,
+                darkIcons = !isDarkTheme
+            )
+        }
+        else{
+            systemUiController.setSystemBarsColor(Color.Black, darkIcons = false)
+        }
+    }
     when(chatState){
         ChatState.CHAT -> {
             ChatListScreen(
@@ -230,6 +255,7 @@ fun ChatScreen(
                 roomMessageList = viewState.roomMessageList,
                 lazyListState = lazyListState,
                 userId = userId,
+                otherUser = viewState.roomContact,
                 modalBottomSheetState = modalBottomSheetState,
                 onAddItemClicked = {
                     scope.launch {
@@ -244,10 +270,31 @@ fun ChatScreen(
                     viewModel.appTaskManager.addTaskToQueue(
                         AppTaskManager.Task.DeleteMessage(otherUserId,it)
                     )
+                },
+                onCloseImagePage = {
+                    systemUiController.setSystemBarsColor(
+                        color = if (isDarkTheme) md_theme_dark_background else md_theme_light_background,
+                        darkIcons = !isDarkTheme
+                    )
+                    scope.launch{
+                        modalBottomSheetState.hide()
+                    }
+                },
+                currentBottomScreen = currentBottomScreen,
+                onClickViewImage = {
+                    currentBottomScreen = ChatBottomSheetScreen.LoadImagePage(it)
+                    systemUiController.setSystemBarsColor(
+                        Color.Black,
+                        darkIcons = false
+                    )
+                    scope.launch {
+                        modalBottomSheetState.show()
+                    }
                 }
             )
         }
         ChatState.UPLOAD_IMAGE -> {
+            systemUiController.setSystemBarsColor(Color.Black, darkIcons = false)
             newPhotoURI?.let {
                 UploadImageScreen(
                     imageUri = it,
@@ -305,27 +352,43 @@ fun ChatListScreen(
     onBackClicked: () -> Unit,
     newMessageText: String,
     viewModel: ChatViewModel,
+    otherUser: RoomContact,
     roomMessageList: List<RoomMessage>,
     lazyListState: LazyListState,
     userId: String,
     modalBottomSheetState: ModalBottomSheetState,
     onAddItemClicked: () -> Unit,
+    currentBottomScreen: ChatBottomSheetScreen,
     newPhotoUri: Uri?,
     context: Context,
     activity: Activity?,
     chatMediaListMap: HashMap<String, DownloadState>,
-    onDeleteMessage: (RoomMessage) -> Unit
+    onDeleteMessage: (RoomMessage) -> Unit,
+    onClickViewImage: (Uri) -> Unit,
+    onCloseImagePage: () -> Unit
 ){
     val scope = rememberCoroutineScope()
     ModalBottomSheetLayout(
         sheetState = modalBottomSheetState,
         sheetBackgroundColor = MaterialTheme.colorScheme.background,
-        sheetShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        sheetShape = if(currentBottomScreen !is ChatBottomSheetScreen.LoadImagePage)RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)else RectangleShape,
         sheetContent = {
-            UploadFileOptionDialog(
-                title = "Upload Media",
-                onTakePictureClicked = onTakePicture,
-                onUploadFromStorageClicked = onUploadFromStorageClicked)
+            when(currentBottomScreen){
+                is ChatBottomSheetScreen.LoadImagePage -> {
+                    val uri = currentBottomScreen
+                    ImagePage(title = otherUser.displayName, imageObj = currentBottomScreen.imageUri) {
+                        onCloseImagePage()
+                    }
+                }
+                ChatBottomSheetScreen.UploadFileOptionDialog -> {
+                    UploadFileOptionDialog(
+                        title = "Upload Media",
+                        onTakePictureClicked = onTakePicture,
+                        onUploadFromStorageClicked = onUploadFromStorageClicked
+                    )
+                }
+            }
+
         }
         ){
         Scaffold(
@@ -372,7 +435,8 @@ fun ChatListScreen(
                                     downloadState = if(roomMessageList[it].messageType == MessageType.TEXT_IMAGE.toString())
                                         chatMediaListMap[roomMessageList[it].messageID]
                                     else DownloadState.NotDownloaded,
-                                    onDeleteMessage = onDeleteMessage
+                                    onDeleteMessage = onDeleteMessage,
+                                    onClickViewImage = onClickViewImage
                                 )
                             }
                         }
@@ -392,14 +456,21 @@ fun MessageItem(
     myUserId: String,
     roomMessage: RoomMessage,
     downloadState: DownloadState?,
-    onDeleteMessage: (RoomMessage) -> Unit
+    onDeleteMessage: (RoomMessage) -> Unit,
+    onClickViewImage: (Uri) -> Unit
 ){
     val isSender = myUserId == roomMessage.senderID
     val canDeleteMessage = (Date().time - roomMessage.messageTime)<86400000L //if message has lasted for 24 hours
     val onClick = {
         when (downloadState) {
             DownloadState.Downloaded -> {
-                //todo
+                roomMessage.localFilePath?.let{
+                    onClickViewImage(
+                        Uri.fromFile(
+                            File(context.filesDir, it)
+                        )
+                    )
+                }
             }
 
             is DownloadState.Downloading -> {
@@ -443,8 +514,9 @@ fun MessageItem(
                 .fillMaxWidth()
                 .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
                 .combinedClickable(
-                    onClick = {},
-                    onLongClick = {optionsExpanded = true}
+                    onClick = {
+                    },
+                    onLongClick = { optionsExpanded = true }
                 )
             ,
             horizontalArrangement = if (isSender) Arrangement.End else Arrangement.Start
@@ -475,7 +547,7 @@ fun MessageItem(
                                 modifier = Modifier.padding(5.dp),
                                 context = context,
                                 roomMessage = roomMessage,
-                                downloadState = it
+                                downloadState = it,
                             ) {
                                 onClick()
                             }
@@ -615,4 +687,11 @@ fun ChatBottomBar(
             }
         }
     }
+}
+
+sealed class ChatBottomSheetScreen {
+    object UploadFileOptionDialog: ChatBottomSheetScreen()
+    data class LoadImagePage(
+        val imageUri: Uri
+    ): ChatBottomSheetScreen()
 }

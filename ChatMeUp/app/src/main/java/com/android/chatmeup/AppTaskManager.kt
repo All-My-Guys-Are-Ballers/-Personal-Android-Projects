@@ -429,16 +429,16 @@ class AppTaskManager @Inject constructor(private val chatMeUpDatabase: ChatMeUpD
             val roomMessage = firebaseMessageToRoomMessage(message)
             chatMeUpDatabase.messageDao.upsertMessage(roomMessage)
             if(message.messageType == MessageType.TEXT_IMAGE.toString()){
-                val localFilePath = "${chatID}/${messageID}.png"
+                val localFilePath = "${chatID}/${messageID}_thumbnail.png"
                 addDownloadTask(
                     context = context,
                     downloadTask = DownloadTask(
                         url = message.thumbnailUrl,
-                        localFilePath = "${chatID}/${messageID}.png",
+                        localFilePath = localFilePath,
                         shouldRetry = true,
                         onDone = {
                             ioScope.launch{
-                                chatMeUpDatabase.messageDao.upsertMessage(roomMessage.copy(localFilePath = localFilePath))
+                                chatMeUpDatabase.messageDao.upsertMessage(roomMessage.copy(localThumbnailPath = localFilePath))
                             }
                         }
                     ),

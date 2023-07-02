@@ -383,15 +383,13 @@ fun MoreScreen(
 ){
     Surface(
         modifier = modifier
-            .fillMaxSize()
-            .padding(top = 20.dp, start = 20.dp, end = 0.dp),
+            .fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
         Column() {
             ContactInfoWithProfilePicture(context = context, myContact = myContact) {
                 onNavigateToEditProfile()
             }
-            Spacer(modifier = Modifier.height(25.dp))
 //            MoreItem() {
 //
 //            }
@@ -454,7 +452,7 @@ fun ContactInfoWithProfilePicture(
         shape = RectangleShape,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)
     ) {
-        Row() {
+        Row(modifier = Modifier.padding(start = 20.dp, top = 20.dp, bottom = 20.dp)) {
             ProfilePicture(
                 imageObj = File(context.filesDir, myContact.localProfilePhotoPath),
                 size = 60.dp,
@@ -501,6 +499,7 @@ fun MoreItem(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)
     ){
         Row(
+            modifier = Modifier.padding(start = 20.dp, top = 5.dp, bottom = 5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
